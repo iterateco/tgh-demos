@@ -19,9 +19,9 @@ export class Main extends Phaser.Scene {
 
     // Menu options
     sceneKeys.forEach((sceneKey, index) => {
-      const menuItem = this.add.text(50, 50 + index * 30, sceneKey, {
-        fontSize: '16px',
-        color: '#ccc',
+      const menuItem = this.add.text(50, 50 + index * 40, sceneKey, {
+        fontSize: '20px',
+        color: '#eee',
       });
 
       // Pointer events
