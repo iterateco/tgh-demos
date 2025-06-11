@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { Entity, Scrollable } from '../types';
 import { randomPastel } from '../utils/color';
 import { ToroidalPoissonDisc } from '../utils/ToroidalPoissonDisc';
+import { BaseScene } from './BaseScene';
 
 const BG_SIZE = { width: 1024, height: 768 };
 
@@ -14,7 +15,7 @@ interface VesselData {
   updateTime: number
 }
 
-export class VesselField2D extends Phaser.Scene {
+export class VesselField2D extends BaseScene {
   cameraProps = {
     velocity: new Phaser.Math.Vector2(0, 0),
     speedFactor: 0.1,
@@ -33,14 +34,15 @@ export class VesselField2D extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('sky', 'assets/sky.png');
-    this.load.image('stars_1', 'assets/stars_1.png');
-    this.load.image('stars_2', 'assets/stars_2.png');
-    this.load.image('clouds_1', 'assets/clouds_1.png');
-    this.load.image('clouds_2', 'assets/clouds_2.png');
-    this.load.image('vessels_2', 'assets/vessels_2.png');
-    this.load.image('vessels_3', 'assets/vessels_3.png');
-    this.load.image('vessel', 'assets/heart.png');
+    super.preload();
+    this.load.image('sky', 'sky.png');
+    this.load.image('stars_1', 'stars_1.png');
+    this.load.image('stars_2', 'stars_2.png');
+    this.load.image('clouds_1', 'clouds_1.png');
+    this.load.image('clouds_2', 'clouds_2.png');
+    this.load.image('vessels_2', 'vessels_2.png');
+    this.load.image('vessels_3', 'vessels_3.png');
+    this.load.image('vessel', 'heart.png');
   }
 
   create() {
