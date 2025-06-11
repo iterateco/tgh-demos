@@ -4,7 +4,6 @@ import { randomPastel } from '../utils/color';
 import { ToroidalPoissonDisc } from '../utils/ToroidalPoissonDisc';
 
 const BG_SIZE = { width: 1024, height: 768 };
-const VESSEL_SIZE = 200;
 
 interface VesselData {
   color: Phaser.Display.Color
