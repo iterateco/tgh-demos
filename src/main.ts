@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { Main } from './scenes/Main';
+import { VesselField2D } from './scenes/VesselField2D';
 
 //  Find out more information about the Game Config at:
 //  https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
@@ -13,7 +14,10 @@ const config = {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [Main],
+  scene: [
+    Main,
+    VesselField2D
+  ],
   seed: ['23423434348347'],
   input: { keyboard: true }
 };
