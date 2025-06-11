@@ -1,0 +1,23 @@
+{
+  "name": "tgh-vessel-field",
+  "description": "TGH Vessel Field",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .ts --ext .js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "eslint": "^9.28.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.34.0",
+    "vite": "^5.1.4"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  }
+}
