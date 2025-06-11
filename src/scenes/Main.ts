@@ -8,8 +8,12 @@ const BG_SIZE = { width: 1024, height: 768 };
 const VESSEL_SIZE = 200;
 
 interface VesselData {
-  color: Phaser.Display.Color,
+  color: Phaser.Display.Color
   r: number
+  drift: Phaser.Math.Vector2
+  vel: Phaser.Math.Vector2
+  offset: Phaser.Math.Vector2
+  updateTime: number
 }
 
 export class Main extends Phaser.Scene {
@@ -68,13 +72,13 @@ export class Main extends Phaser.Scene {
         sprite: this.add.tileSprite(0, 0, 0, 0, 'stars_1')
           .setScale(0.5)
           .setScrollFactor(0),
-        scrollRatio: 0.16
+        scrollRatio: 0.14
       },
       {
         sprite: this.add.tileSprite(0, 0, 0, 0, 'stars_2')
           .setScale(0.5)
           .setScrollFactor(0),
-        scrollRatio: 0.2
+        scrollRatio: 0.17
       },
       {
         sprite: this.add.tileSprite(0, 0, 0, 0, 'vessels_2')
@@ -99,7 +103,11 @@ export class Main extends Phaser.Scene {
     for (let i = 0; i < 1000; i++) {
       items.push({
         color: randomPastel(),
-        r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 100
+        r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 100,
+        drift: new Phaser.Math.Vector2(),
+        vel: new Phaser.Math.Vector2(),
+        offset: new Phaser.Math.Vector2(),
+        updateTime: 0
       });
     }
 
@@ -132,7 +140,7 @@ export class Main extends Phaser.Scene {
       .setScale(scale);
   }
 
-  update(_time: number, _delta: number) {
+  update(time: number, _delta: number) {
     const { cameraProps } = this;
     const camera = this.cameras.main;
 
@@ -163,19 +171,56 @@ export class Main extends Phaser.Scene {
 
           const screenX = (wx - wrapX);
           const screenY = (wy - wrapY);
-          const { r } = c.entity;
+          const { entity } = c;
+          const { r } = entity;
 
           if (
             screenX + r >= 0 && screenX - r <= width &&
             screenY + r >= 0 && screenY - r <= height
           ) {
+
+            if (entity.updateTime !== time) {
+              this.updateVesselPhysics(entity);
+              entity.updateTime = time;
+            }
+
+            const { offset } = entity;
+
             this.vesselContainer.add(
-              this.createVesselSprite(screenX, screenY, c.entity.r * .006, c.entity.color.color)
+              this.createVesselSprite(screenX + offset.x, screenY + offset.y, r * .006, entity.color.color)
             ).setScrollFactor(0);
+
           }
         }
       }
     }
+  }
+
+  updateVesselPhysics(entity: VesselData) {
+    const { drift, vel, offset } = entity;
+
+    // Slowly change drift vector (fake Perlin noise)
+    drift.x += (Math.random() - 0.5) * 0.001;
+    drift.y += (Math.random() - 0.5) * 0.001;
+    drift.x *= 0.98;
+    drift.y *= 0.98;
+
+    // Apply drift to velocity
+    vel.x += drift.x;
+    vel.y += drift.y;
+
+    // Apply restoring force (like a spring to the origin)
+    const restoringStrength = 0.0008;
+    vel.x += -offset.x * restoringStrength;
+    vel.y += -offset.y * restoringStrength;
+
+    // Apply friction
+    vel.x *= 0.99;
+    vel.y *= 0.99;
+
+    // Update position
+    offset.x += vel.x;
+    offset.y += vel.y;
   }
 
   resize() {
