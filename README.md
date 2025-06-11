@@ -1,8 +1,5 @@
-# TGH Vessel Field
-
+# TGH Demos
 ```
-npm install
-npm run dev
+yarn
+yarn dev
 ```
-
-Use arrow up/down keys to zoom.

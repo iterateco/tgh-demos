@@ -1,6 +1,6 @@
 {
-  "name": "tgh-vessel-field",
-  "description": "TGH Vessel Field",
+  "name": "tgh-demos",
+  "description": "TGH Demos",
   "version": "1.0.0",
   "type": "module",
   "license": "Apache-2.0",
