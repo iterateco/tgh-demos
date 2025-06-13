@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { Main } from './scenes/Main';
 import { VesselField2D } from './scenes/VesselField2D';
+import { VesselField3D } from './scenes/VesselField3D';
 
 //  Find out more information about the Game Config at:
 //  https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
@@ -16,7 +17,8 @@ const config = {
   },
   scene: [
     Main,
-    VesselField2D
+    VesselField2D,
+    VesselField3D
   ],
   seed: ['23423434348347'],
   input: { keyboard: true }
