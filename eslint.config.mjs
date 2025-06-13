@@ -40,6 +40,7 @@ export default tseslint.config(
       '@typescript-eslint/promise-function-async': 0,
       '@typescript-eslint/naming-convention': 0,
       '@typescript-eslint/no-dynamic-delete': 0,
+      '@typescript-eslint/no-explicit-any': 0,
       '@typescript-eslint/no-floating-promises': 0,
       '@typescript-eslint/no-misused-promises': 0,
       '@typescript-eslint/no-non-null-assertion': 0,

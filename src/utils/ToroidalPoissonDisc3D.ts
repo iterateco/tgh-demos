@@ -35,11 +35,17 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
     this.cellsZ = worldDepth / cellSize;
   }
 
-  generate(width: number, height: number, cameraX: number, cameraY: number, cameraZ: number) {
-    const near = 0;
-    const far = 1000;
+  generate(
+    width: number,
+    height: number,
+    cameraX: number,
+    cameraY: number,
+    cameraZ: number,
+    near = 0,
+    far = 1000,
+    fovFactor = 500
+  ) {
     const margin = 150;
-    const fovFactor = 500; // from project3DTo2D
 
     const startZ = Math.floor((cameraZ + near) / this.cellSize);
     const endZ = Math.floor((cameraZ + far + margin) / this.cellSize);
