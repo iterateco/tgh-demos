@@ -20,7 +20,7 @@ export class VesselStream extends BaseScene {
     fov: 400,
     far: 3000,
     z: 0,
-    thrust: 0.25,
+    thrust: 0.5,
     velocity: new Phaser.Math.Vector3(0, 0, 10),
     speedFactor: 0.2,
     damping: 0.95,
@@ -161,7 +161,7 @@ export class VesselStream extends BaseScene {
     if (blur > 0.3) {
       let blurController = (sprite as any).blurController;
       if (!blurController) {
-        blurController = sprite.postFX.addBlur(0, blur * 3, blur * 3, 1, 0xFFFFFF, 1);
+        blurController = sprite.postFX.addBlur(0, blur * 2, blur * 2, 1, 0xFFFFFF, 1);
         (sprite as any).blurController = blurController;
       }
     }
@@ -258,7 +258,7 @@ export class VesselStream extends BaseScene {
           } else if (dzFromCamera > farFadeStart) {
             // Far
             const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
-            alpha = Math.pow(1 - t, 2); // ease-out
+            alpha = Math.pow(1 - t, 1.5); // ease-out
             blur = 1 - Math.pow(1 - t, 3); // ease-out
           } else {
             // Fully visible between nearFadeEnd and farFadeStart
