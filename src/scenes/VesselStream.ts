@@ -1,13 +1,18 @@
 import * as Phaser from 'phaser';
 import { Entity, Scrollable } from '../types';
-import { randomPastel } from '../utils/color';
 import { ToroidalPoissonDisc3D } from '../utils/ToroidalPoissonDisc3D';
 import { BaseScene } from './BaseScene';
 
 const BG_SIZE = { width: 1024, height: 768 };
+const VESSEL_ATLAS_CONFIG = {
+  cellWidth: 250,
+  cellHeight: 250,
+  cols: 4,
+  rows: 4
+}
 
 interface VesselData {
-  color: Phaser.Display.Color
+  variation: number
   r: number
   drift: Phaser.Math.Vector2
   vel: Phaser.Math.Vector2
@@ -22,7 +27,7 @@ export class VesselStream extends BaseScene {
     z: 0,
     thrust: 0.5,
     velocity: new Phaser.Math.Vector3(0, 0, 10),
-    speedFactor: 0.2,
+    speedFactor: 0.1,
     damping: 0.95,
   };
 
@@ -46,8 +51,8 @@ export class VesselStream extends BaseScene {
     this.load.image('stars_2', 'stars_2.png');
     this.load.image('clouds_1', 'clouds_1.png');
     this.load.image('clouds_2', 'clouds_2.png');
-    this.load.image('vessel', 'heart.png');
-    this.load.image('vessel_overlay', 'heart_overlay.png');
+    this.load.image('vessel_atlas', 'heart_atlas.png');
+    this.load.image('vessel_blur_atlas', 'heart_blur_atlas.png');
   }
 
   create() {
@@ -127,7 +132,7 @@ export class VesselStream extends BaseScene {
 
     for (let i = 0; i < 1000; i++) {
       items.push({
-        color: randomPastel(),
+        variation: Phaser.Math.RND.integerInRange(0, VESSEL_ATLAS_CONFIG.cols * VESSEL_ATLAS_CONFIG.rows),
         // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
         r: 120,
         drift: new Phaser.Math.Vector2(),
@@ -142,34 +147,92 @@ export class VesselStream extends BaseScene {
     this.vesselField.entities = items;
   }
 
-  createStats() {
-    this.fpsText = this.add.text(10, 10, 'FPS: 0', {
-      fontSize: 12,
-      color: '#ffffff',
-    })
-      .setAlpha(0.75)
-      .setScrollFactor(0);
-  }
+  // createVesselAtlas() {
+  //   const { cellWidth, cellHeight, cols, rows } = VESSEL_ATLAS_CONFIG;
 
-  getVesselSprite(x: number, y: number, scale: number, tint: number, alpha: number, blur: number) {
-    const sprite: Phaser.GameObjects.Sprite = this.vessels.get(x, y, 'vessel_overlay')
-      .setTint(tint)
+  //   const rt = this.make.renderTexture({
+  //     width: cellWidth * cols,
+  //     height: cellHeight * rows
+  //   }, false);
+
+  //   for (let y = 0; y < rows; y++) {
+  //     for (let x = 0; x < cols; x++) {
+  //       const posX = x * cellWidth;
+  //       const posY = y * cellHeight;
+  //       const color = randomPastel();
+
+  //       // Draw base image
+  //       rt.draw('vessel', posX, posY);
+
+  //       // Tint and blend the white version
+  //       const temp = this.make.image({ key: 'vessel_overlay' }, false)
+  //         .setOrigin(0)
+  //         .setTint(color.color)
+  //         .setBlendMode(Phaser.BlendModes.SCREEN);
+
+  //       rt.draw(temp, posX, posY);
+  //     }
+  //   }
+
+  //   rt.saveTexture('vessel_atlas');
+  // }
+
+  // createVesselBlurAtlas() {
+  //   const sourceAtlas = this.textures.get('vessel_atlas').getSourceImage();
+  //   const width = sourceAtlas.width;
+  //   const height = sourceAtlas.height;
+
+  //   // Create an image to apply FX
+  //   const image = this.add.image(0, 0, 'vessel_atlas').setOrigin(0);
+
+  //   // Apply blur FX using Phaser's built-in pipeline
+  //   image.preFX.addBlur(0, 4, 4, 1, 0xFFFFFF, 1);
+
+  //   // Render the blurred image into another render texture
+  //   const blurredRT = this.make.renderTexture({ width, height }, false);
+  //   blurredRT.draw(image, -200, -200);
+
+  //   // Clean up
+  //   //image.destroy();
+
+  //   // Save blurred atlas as a new texture
+  //   blurredRT.saveTexture('vessel_blur_atlas');
+  // }
+
+  drawVessel(x: number, y: number, scale: number, variation: number, alpha: number, blur: number) {
+    const variationIndex = variation % (VESSEL_ATLAS_CONFIG.cols * VESSEL_ATLAS_CONFIG.rows);
+    const col = variationIndex % VESSEL_ATLAS_CONFIG.cols;
+    const row = Math.floor(variationIndex / VESSEL_ATLAS_CONFIG.rows);
+    const cropX = col * VESSEL_ATLAS_CONFIG.cellWidth;
+    const cropY = row * VESSEL_ATLAS_CONFIG.cellHeight;
+
+
+    (this.vessels.get(x - cropX * scale, y - cropY * scale, 'vessel_blur_atlas') as Phaser.GameObjects.Sprite)
+      .setOrigin(0)
+      .setCrop(cropX, cropY, VESSEL_ATLAS_CONFIG.cellWidth, VESSEL_ATLAS_CONFIG.cellHeight)
+      .setScale(scale)
+      .setAlpha(blur * Math.pow(alpha, .5))
+      .setScrollFactor(0)
+      .setVisible(true)
+      .setActive(true);
+
+
+    const sprite = (this.vessels.get(x - cropX * scale, y - cropY * scale, 'vessel_atlas') as Phaser.GameObjects.Sprite)
+      .setOrigin(0)
+      .setCrop(cropX, cropY, VESSEL_ATLAS_CONFIG.cellWidth, VESSEL_ATLAS_CONFIG.cellHeight)
       .setScale(scale)
       .setAlpha(alpha)
-      .setScrollFactor(0);
+      .setScrollFactor(0)
+      .setVisible(true)
+      .setActive(true);
 
-    if (blur > 0.3) {
-      let blurController = (sprite as any).blurController;
-      if (!blurController) {
-        blurController = sprite.postFX.addBlur(0, blur * 2, blur * 2, 1, 0xFFFFFF, 1);
-        (sprite as any).blurController = blurController;
-      }
-    }
-
-    sprite.setVisible(true);
-    sprite.setActive(true);
-
-    return sprite;
+    // if (blur > 0.3) {
+    //   let blurController = (sprite as any).blurController;
+    //   if (!blurController) {
+    //     blurController = sprite.postFX.addBokeh(scale * 3, blur, 0.1);
+    //     (sprite as any).blurController = blurController;
+    //   }
+    // }
 
     // return this.add.container(x, y, [
     //   this.add.image(0, 0, 'vessel'),
@@ -178,6 +241,15 @@ export class VesselStream extends BaseScene {
     //     .setBlendMode(Phaser.BlendModes.SCREEN)
     // ])
     //   .setScale(scale);
+  }
+
+  createStats() {
+    this.fpsText = this.add.text(10, 10, 'FPS: 0', {
+      fontSize: 12,
+      color: '#ffffff',
+    })
+      .setAlpha(0.75)
+      .setScrollFactor(0);
   }
 
   update(time: number, _delta: number) {
@@ -219,7 +291,7 @@ export class VesselStream extends BaseScene {
     );
 
     const nearFadeStart = 0;
-    const nearFadeEnd = 50;
+    const nearFadeEnd = 100;
     const farFadeStart = 1000;
     const farFadeEnd = cameraProps.far;
 
@@ -266,7 +338,7 @@ export class VesselStream extends BaseScene {
             blur = 0;
           }
 
-          const scale = r * .005;
+          const scale = r * .0075;
 
           if (entity.updateTime !== time) {
             this.updateVesselPhysics(entity);
@@ -279,7 +351,7 @@ export class VesselStream extends BaseScene {
             y: y + offset.y * scale,
             wz,
             scale,
-            color: entity.color.color,
+            variation: entity.variation,
             alpha,
             blur
           });
@@ -296,7 +368,7 @@ export class VesselStream extends BaseScene {
     }
 
     for (const item of renderItems) {
-      this.getVesselSprite(item.x, item.y, item.scale, item.color, item.alpha, item.blur);
+      this.drawVessel(item.x, item.y, item.scale, item.variation, item.alpha, item.blur);
     }
 
     this.fpsText.setText(`FPS: ${this.game.loop.actualFps}`);
