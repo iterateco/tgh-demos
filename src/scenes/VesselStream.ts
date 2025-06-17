@@ -22,12 +22,12 @@ interface VesselData {
 
 export class VesselStream extends BaseScene {
   cameraProps = {
-    fov: 400,
+    fov: 500,
     far: 3000,
     z: 0,
-    thrust: 0.5,
+    thrust: 0.03,
     velocity: new Phaser.Math.Vector3(0, 0, 10),
-    speedFactor: 0.1,
+    speedFactor: 0.2,
     damping: 0.95,
   };
 
@@ -60,7 +60,6 @@ export class VesselStream extends BaseScene {
     const camera = this.cameras.main;
 
     camera.centerOn(0, 0);
-    camera.setScroll(0, 0);
 
     this.createBackground();
     this.createVesselField();
@@ -142,9 +141,15 @@ export class VesselStream extends BaseScene {
       });
     }
 
-    this.vesselField = new ToroidalPoissonDisc3D<VesselData>(2000, 300, 5000, 200);
-    this.vesselField.minPointDist = 100;
+    const worldWidth = 7500;
+    const worldHeight = 7500;
+    const worldDepth = 5000;
+
+    this.vesselField = new ToroidalPoissonDisc3D<VesselData>(worldWidth, worldHeight, worldDepth, 500);
+    this.vesselField.minPointDist = 400;
     this.vesselField.entities = items;
+
+    this.cameras.main.setScroll(worldWidth / 2, worldHeight / 2);
   }
 
   // createVesselAtlas() {
@@ -217,7 +222,7 @@ export class VesselStream extends BaseScene {
       .setActive(true);
 
 
-    const sprite = (this.vessels.get(x - cropX * scale, y - cropY * scale, 'vessel_atlas') as Phaser.GameObjects.Sprite)
+    (this.vessels.get(x - cropX * scale, y - cropY * scale, 'vessel_atlas') as Phaser.GameObjects.Sprite)
       .setOrigin(0)
       .setCrop(cropX, cropY, VESSEL_ATLAS_CONFIG.cellWidth, VESSEL_ATLAS_CONFIG.cellHeight)
       .setScale(scale)
@@ -252,19 +257,21 @@ export class VesselStream extends BaseScene {
       .setScrollFactor(0);
   }
 
-  update(time: number, _delta: number) {
+  update(time: number, delta: number) {
     const { width, height } = this.scale;
     const camera = this.cameras.main;
     const { cameraProps } = this;
     const { worldWidth, worldHeight, worldDepth } = this.vesselField;
 
-    cameraProps.velocity.x *= cameraProps.damping;
-    cameraProps.velocity.y *= cameraProps.damping;
-    cameraProps.velocity.z += cameraProps.thrust;
-    cameraProps.velocity.z *= cameraProps.damping;
+    const damping = cameraProps.damping;
+    cameraProps.velocity.x *= damping;
+    cameraProps.velocity.y *= damping;
+    cameraProps.velocity.z += cameraProps.thrust * delta;
+    cameraProps.velocity.z *= damping;
 
     camera.scrollX = (camera.scrollX + cameraProps.velocity.x);
     camera.scrollY = (camera.scrollY + cameraProps.velocity.y);
+
 
     const cameraX = camera.scrollX;
     const cameraY = camera.scrollY;
@@ -298,8 +305,9 @@ export class VesselStream extends BaseScene {
     const renderItems = [];
 
     for (const c of circles) {
-      const dx = -0.5;
-      const dy = 0.5;
+      const dx = 0;
+      const dy = 0;
+
       for (let dz = -1; dz <= 1; dz++) {
         const wx = c.x + dx * worldWidth;
         const wy = c.y + dy * worldHeight;
@@ -412,10 +420,12 @@ export class VesselStream extends BaseScene {
   }
 
   resize() {
+    const { worldWidth, worldHeight } = this.vesselField;
     const { width, height } = this.scale;
     const scaleX = width / BG_SIZE.width;
     const scaleY = height / BG_SIZE.height;
     const scale = Math.max(scaleX, scaleY);
+    const camera = this.cameras.main;
 
     this.sky.setScale(scale);
     this.sky.setPosition(width / 2, height / 2);
@@ -424,5 +434,7 @@ export class VesselStream extends BaseScene {
       ent.sprite.setSize(width * 2, height * 2);
       ent.sprite.setOrigin(0, 0);
     }
+
+    camera.setBounds(width, height, worldWidth - width, worldHeight - height);
   }
 }

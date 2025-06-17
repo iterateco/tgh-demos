@@ -16,9 +16,6 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  // fps: {
-  //   target: 60
-  // },
   seed: ['23423434348347'],
   input: { keyboard: true },
   scene: [
