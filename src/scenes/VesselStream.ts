@@ -226,7 +226,7 @@ export class VesselStream extends BaseScene {
       .setOrigin(0)
       .setCrop(cropX, cropY, VESSEL_ATLAS_CONFIG.cellWidth, VESSEL_ATLAS_CONFIG.cellHeight)
       .setScale(scale)
-      .setAlpha(alpha)
+      .setAlpha(Math.pow(alpha, 2.5))
       .setScrollFactor(0)
       .setVisible(true)
       .setActive(true);
