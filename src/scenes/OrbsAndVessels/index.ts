@@ -4,11 +4,12 @@ import { ToroidalPoissonDisc3D } from '../../utils/ToroidalPoissonDisc3D';
 import { BaseScene } from '../BaseScene';
 
 const BG_SIZE = { width: 1024, height: 768 };
-const VESSEL_FRAME_WIDTH = 250;
-const VESSEL_FRAME_COUNT = 16;
-const VESSEL_DENSITY = 0.65;
+const FRAME_WIDTH = 250;
+const FRAME_COUNT = 16;
+const ENTITY_FIELD_DENSITY = 0.65;
 
-interface VesselData {
+interface EntityData {
+  type: 'vessel' | 'orb'
   variation: number
   r: number
   drift: Phaser.Math.Vector2
@@ -36,7 +37,8 @@ export class OrbsAndVessels extends BaseScene {
   background!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable)[];
 
   vessels!: Phaser.GameObjects.Group;
-  vesselField!: ToroidalPoissonDisc3D<VesselData>;
+  orbs!: Phaser.GameObjects.Group;
+  entityField!: ToroidalPoissonDisc3D<EntityData>;
 
   fpsText!: Phaser.GameObjects.Text;
 
@@ -51,8 +53,10 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('stars_2', 'stars_2.png');
     this.load.image('clouds_1', 'clouds_1.png');
     this.load.image('clouds_2', 'clouds_2.png');
-    this.load.spritesheet('vessel_atlas', 'heart_atlas.png', { frameWidth: VESSEL_FRAME_WIDTH });
-    this.load.spritesheet('vessel_blur_atlas', 'heart_blur_atlas.png', { frameWidth: VESSEL_FRAME_WIDTH });
+    this.load.spritesheet('vessel_atlas', 'heart_atlas.png', { frameWidth: FRAME_WIDTH });
+    this.load.spritesheet('vessel_blur_atlas', 'heart_blur_atlas.png', { frameWidth: FRAME_WIDTH });
+    this.load.spritesheet('orb_atlas', 'orb_atlas.png', { frameWidth: FRAME_WIDTH });
+    this.load.spritesheet('orb_blur_atlas', 'orb_blur_atlas.png', { frameWidth: FRAME_WIDTH });
   }
 
   create() {
@@ -62,10 +66,11 @@ export class OrbsAndVessels extends BaseScene {
     camera.centerOn(0, 0);
 
     this.createBackground();
-    this.createVesselField();
+    this.createEntityField();
     this.createStats();
 
     this.vessels = this.add.group();
+    this.orbs = this.add.group();
 
     cameraProps.center = new Phaser.Math.Vector2(camera.scrollX, camera.scrollY);
 
@@ -116,12 +121,13 @@ export class OrbsAndVessels extends BaseScene {
     ];
   }
 
-  createVesselField() {
-    const items: VesselData[] = [];
+  createEntityField() {
+    const items: EntityData[] = [];
 
     for (let i = 0; i < 1000; i++) {
       items.push({
-        variation: Phaser.Math.RND.integerInRange(0, VESSEL_FRAME_COUNT),
+        type: Phaser.Math.RND.frac() > 0.05 ? 'vessel' : 'orb',
+        variation: Phaser.Math.RND.integerInRange(0, FRAME_COUNT - 1),
         // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
         r: 120,
         drift: new Phaser.Math.Vector2(),
@@ -133,53 +139,53 @@ export class OrbsAndVessels extends BaseScene {
 
     const worldWidth = 5000;
     const worldHeight = 5000;
-    const worldDepth = 5000;
+    const worldDepth = 10000;
 
-    const densityCoef = 1 / VESSEL_DENSITY;
-    this.vesselField = new ToroidalPoissonDisc3D<VesselData>(worldWidth, worldHeight, worldDepth, densityCoef * 500);
-    this.vesselField.minPointDist = densityCoef * 400;
-    this.vesselField.entities = items;
+    const densityCoef = 1 / ENTITY_FIELD_DENSITY;
+    this.entityField = new ToroidalPoissonDisc3D<EntityData>(worldWidth, worldHeight, worldDepth, densityCoef * 500);
+    this.entityField.minPointDist = densityCoef * 400;
+    this.entityField.entities = items;
 
     this.cameras.main.setScroll(worldWidth / 2, worldHeight / 2);
   }
 
-  drawVessel(x: number, y: number, scale: number, variation: number, alpha: number, blur: number) {
-    const frame = variation % VESSEL_FRAME_COUNT;
+  drawEntity(
+    params: {
+      type: EntityData['type'],
+      variation: number,
+      x: number,
+      y: number,
+      scale: number,
+      alpha: number,
+      blur: number
+    },
+    depth: number
+  ) {
+    const { type, variation, x, y, scale, alpha, blur } = params;
+    const frame = variation;
 
-    (this.vessels.get(x, y, 'vessel_blur_atlas') as Phaser.GameObjects.Sprite)
+    const group = type === 'vessel' ? this.vessels : this.orbs;
+
+    (group.get(x, y, type + '_blur_atlas') as Phaser.GameObjects.Sprite)
       .setOrigin(0)
       .setFrame(frame)
       .setScale(scale)
       .setAlpha(blur * Math.pow(alpha, .5))
+      .setDepth(depth)
       .setScrollFactor(0)
       .setVisible(true)
       .setActive(true);
 
 
-    (this.vessels.get(x, y, 'vessel_atlas') as Phaser.GameObjects.Sprite)
+    (group.get(x, y, type + '_atlas') as Phaser.GameObjects.Sprite)
       .setOrigin(0)
       .setFrame(frame)
       .setScale(scale)
       .setAlpha(Math.pow(alpha, 2.5))
+      .setDepth(depth)
       .setScrollFactor(0)
       .setVisible(true)
       .setActive(true);
-
-    // if (blur > 0.3) {
-    //   let blurController = (sprite as any).blurController;
-    //   if (!blurController) {
-    //     blurController = sprite.postFX.addBokeh(scale * 3, blur, 0.1);
-    //     (sprite as any).blurController = blurController;
-    //   }
-    // }
-
-    // return this.add.container(x, y, [
-    //   this.add.image(0, 0, 'vessel'),
-    //   this.add.image(0, 0, 'vessel_overlay')
-    //     .setTint(tint)
-    //     .setBlendMode(Phaser.BlendModes.SCREEN)
-    // ])
-    //   .setScale(scale);
   }
 
   createStats() {
@@ -197,7 +203,7 @@ export class OrbsAndVessels extends BaseScene {
     const camera = this.cameras.main;
     const { cameraProps } = this;
     const pointer = this.input.activePointer;
-    const { worldWidth, worldHeight, worldDepth } = this.vesselField;
+    const { worldWidth, worldHeight, worldDepth } = this.entityField;
 
     if (pointer.isDown) {
       const delta = cameraProps.prevPointerPos.clone().subtract(pointer.position);
@@ -257,7 +263,7 @@ export class OrbsAndVessels extends BaseScene {
       cloud.sprite.setTilePosition(cloud.sprite.tilePositionX + time * cloud.accel, cloud.sprite.tilePositionY);
     }
 
-    const circles = this.vesselField.generate(
+    const circles = this.entityField.generate(
       width,
       height,
       cameraX,
@@ -292,8 +298,8 @@ export class OrbsAndVessels extends BaseScene {
         const r = entity.r * scale;
 
         if (
-          x + r >= 0 && x - r <= width &&
-          y + r >= 0 && y - r <= height
+          x + r >= -100 && x - r <= width &&
+          y + r >= -100 && y - r <= height
         ) {
           let alpha = 1;
           let blur = 0;
@@ -326,6 +332,7 @@ export class OrbsAndVessels extends BaseScene {
 
           const { offset } = entity;
           renderItems.push({
+            type: entity.type,
             x: x + offset.x * scale,
             y: y + offset.y * scale,
             wz,
@@ -345,15 +352,19 @@ export class OrbsAndVessels extends BaseScene {
       sprite.setActive(false);
       sprite.setVisible(false);
     }
-
-    for (const item of renderItems) {
-      this.drawVessel(item.x, item.y, item.scale, item.variation, item.alpha, item.blur);
+    for (const sprite of (this.orbs.getChildren() as Phaser.GameObjects.Image[])) {
+      sprite.setActive(false);
+      sprite.setVisible(false);
     }
+
+    renderItems.forEach((item, depth) => {
+      this.drawEntity(item, depth);
+    });
 
     this.fpsText.setText(`FPS: ${this.game.loop.actualFps}`);
   }
 
-  updateVesselPhysics(entity: VesselData) {
+  updateVesselPhysics(entity: EntityData) {
     const { drift, vel, offset } = entity;
 
     // Slowly change drift vector (fake Perlin noise)

@@ -141,7 +141,7 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
     const points = poissonDisc3D(this.cellSize, this.cellSize, this.cellSize, this.minPointDist);
 
     // Deterministic entity index based on cell coordinates
-    const cellSeed = ((ix * 73856093) ^ (iy * 19349663)) >>> 0;
+    const cellSeed = ((ix * 73856093) ^ (iy * 19349663) ^ (iz * 47593658)) >>> 0;
     let entityIdx = cellSeed % this.entities.length;
 
     for (const d of points) {
