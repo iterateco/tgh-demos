@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
-import { Entity, Scrollable } from '../types';
-import { ToroidalPoissonDisc3D } from '../utils/ToroidalPoissonDisc3D';
-import { BaseScene } from './BaseScene';
+import { Entity, Scrollable } from '../../types';
+import { BaseScene } from '../BaseScene';
+import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
 
 const BG_SIZE = { width: 1024, height: 768 };
 const VESSEL_ATLAS_CONFIG = {

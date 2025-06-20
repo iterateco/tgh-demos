@@ -1,4 +1,4 @@
-import { poissonDisc3D } from './poissonDisc3D';
+import { poissonDisc3D } from '../../utils/poissonDisc3D';
 
 interface Entity {
   r: number
@@ -23,7 +23,6 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
   generatedSet = new Set<string>();
   spatialHash = new Map<string, Circle[]>();
   circles: Circle<TEntity>[] = [];
-  entities: TEntity[] = [];
 
   constructor(worldWidth: number, worldHeight: number, worldDepth: number, cellSize = 50) {
     this.worldWidth = worldWidth;
@@ -36,15 +35,19 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
   }
 
   generate(
-    width: number,
-    height: number,
-    cameraX: number,
-    cameraY: number,
-    cameraZ: number,
-    near = 0,
-    far = 1000,
-    fovFactor = 500
+    params: {
+      width: number
+      height: number
+      cameraX: number
+      cameraY: number
+      cameraZ: number
+      near?: number
+      far?: number
+      fov?: number
+      getEntity: (seed: number) => TEntity
+    }
   ) {
+    const { width, height, cameraX, cameraY, cameraZ, near = 0, far = 1000, fov = 500 } = params;
     const margin = 150;
 
     const startZ = Math.floor((cameraZ + near) / this.cellSize);
@@ -53,7 +56,7 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
     for (let gz = startZ; gz <= endZ; gz++) {
       const z = gz * this.cellSize;
       const dz = z - cameraZ;
-      const scale = fovFactor / (dz + fovFactor);
+      const scale = fov / (dz + fov);
 
       const halfWidth = (width / 2) / scale;
       const halfHeight = (height / 2) / scale;
@@ -65,7 +68,7 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
 
       for (let gx = startX; gx <= endX; gx++) {
         for (let gy = startY; gy <= endY; gy++) {
-          this.generatePointsInCell(gx, gy, gz);
+          this.generatePointsInCell(gx, gy, gz, params.getEntity);
         }
       }
     }
@@ -126,7 +129,7 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
     return false;
   }
 
-  private generatePointsInCell(ix: number, iy: number, iz: number) {
+  private generatePointsInCell(ix: number, iy: number, iz: number, getEntity: (seed: number) => TEntity) {
     const k = this.hashKey(ix, iy, iz);
 
     if (this.generatedSet.has(k)) {
@@ -142,19 +145,19 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
 
     // Deterministic entity index based on cell coordinates
     const cellSeed = ((ix * 73856093) ^ (iy * 19349663) ^ (iz * 47593658)) >>> 0;
-    let entityIdx = cellSeed % this.entities.length;
+    let entityIdx = 0;
 
     for (const d of points) {
       const x = (baseX + d.x) % this.worldWidth;
       const y = (baseY + d.y) % this.worldHeight;
       const z = (baseZ + d.z) % this.worldDepth;
-      const entity = this.entities[entityIdx];
+      const entity = getEntity(cellSeed + entityIdx);
 
       if (!this.checkOverlap(x, y, z, entity.r)) {
         const c = { x, y, z, entity, fade: 1 };
         this.circles.push(c);
         this.hashCircle(c);
-        entityIdx = (entityIdx + 1) % this.entities.length;
+        entityIdx++;
       }
     }
   }

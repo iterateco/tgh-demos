@@ -1,8 +1,8 @@
 import * as Phaser from 'phaser';
 import { Entity, Scrollable } from '../types';
 import { randomPastel } from '../utils/color';
-import { ToroidalPoissonDisc3D } from '../utils/ToroidalPoissonDisc3D';
 import { BaseScene } from './BaseScene';
+import { ToroidalPoissonDisc3D } from './OrbsAndVessels/ToroidalPoissonDisc3D';
 
 const BG_SIZE = { width: 1024, height: 768 };
 
@@ -175,7 +175,7 @@ export class VesselField3D extends BaseScene {
       cloud.sprite.setTilePosition(cloud.sprite.tilePositionX + time * cloud.speedFactor, cloud.sprite.tilePositionY);
     }
 
-    let circles = this.vesselField.generate(width, height, cameraX, cameraY, cameraZ);
+    let circles = this.vesselField.generate({ width, height, cameraX, cameraY, cameraZ });
 
     this.vesselContainer.removeAll(true);
 
