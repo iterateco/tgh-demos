@@ -5,7 +5,8 @@ import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
 
 const BG_SIZE = { width: 1024, height: 768 };
 const FRAME_WIDTH = 250;
-const FRAME_COUNT = 16;
+const VESSEL_VARIANT_COUNT = 16;
+const ORB_VARIANT_COUNT = 5;
 const ENTITY_FIELD_DENSITY = 0.65;
 
 interface EntityData {
@@ -17,6 +18,10 @@ interface EntityData {
   offset: Phaser.Math.Vector2
   transitionFactor: number
   updateTime: number
+}
+
+interface VesselData extends EntityData {
+  attunement: number
 }
 
 export class OrbsAndVessels extends BaseScene {
@@ -37,10 +42,14 @@ export class OrbsAndVessels extends BaseScene {
   clouds!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable & { accel: number })[];
   background!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable)[];
 
-  vessels: EntityData[] = [];
+  vesselVariantAttrs: Array<number[]> = [];
+
+  vessels: VesselData[] = [];
   orbs: EntityData[] = [];
+  collectedOrbs: EntityData[] = [];
 
   vesselSprites!: Phaser.GameObjects.Group;
+  vesselGlowSprites!: Phaser.GameObjects.Group;
   orbSprites!: Phaser.GameObjects.Group;
   entityField!: ToroidalPoissonDisc3D<EntityData>;
 
@@ -59,6 +68,7 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('clouds_2', 'clouds_2.png');
     this.load.spritesheet('vessel_atlas', 'heart_atlas.png', { frameWidth: FRAME_WIDTH });
     this.load.spritesheet('vessel_blur_atlas', 'heart_blur_atlas.png', { frameWidth: FRAME_WIDTH });
+    this.load.image('vessel_glow', 'heart_glow.png');
     this.load.spritesheet('orb_atlas', 'orb_atlas.png', { frameWidth: FRAME_WIDTH });
     this.load.spritesheet('orb_blur_atlas', 'orb_blur_atlas.png', { frameWidth: FRAME_WIDTH });
   }
@@ -74,9 +84,17 @@ export class OrbsAndVessels extends BaseScene {
     this.createStats();
 
     this.vesselSprites = this.add.group();
+    this.vesselGlowSprites = this.add.group();
     this.orbSprites = this.add.group();
 
     cameraProps.center = new Phaser.Math.Vector2(camera.scrollX, camera.scrollY);
+
+    for (let i = 0; i < VESSEL_VARIANT_COUNT; i++) {
+      const attrs = new Array(ORB_VARIANT_COUNT).fill(0).map(() => {
+        return Phaser.Math.RND.frac();
+      });
+      this.vesselVariantAttrs.push(attrs);
+    }
 
     // this.cursors = this.input.keyboard?.createCursorKeys()
 
@@ -87,14 +105,34 @@ export class OrbsAndVessels extends BaseScene {
       cameraProps.prevPointerPos = new Phaser.Math.Vector2(pointer.x, pointer.y);
 
       const object = objects[0];
-      if (object?.entity?.type === 'orb') {
+      if (!object) return;
+
+      const entity = object.entity;
+      if (!entity) return;
+      if (entity.type !== 'orb') return;
+      if (this.collectedOrbs.find(o => o === entity)) return;
+
+      this.collectedOrbs.push(entity);
+
+      this.tweens.add({
+        targets: object.entity,
+        transitionFactor: 0,
+        ease: 'Power2',
+        duration: 300
+      });
+
+      if (this.collectedOrbs.length > 3) {
+        const toRestore = this.collectedOrbs[0];
         this.tweens.add({
-          targets: object.entity,
-          transitionFactor: 0,
+          targets: toRestore,
+          transitionFactor: 1,
           ease: 'Power2',
           duration: 300
         });
+        this.collectedOrbs = this.collectedOrbs.slice(1);
       }
+
+      this.updateVesselAttunements();
     });
   }
 
@@ -139,13 +177,14 @@ export class OrbsAndVessels extends BaseScene {
     for (let i = 0; i < 1000; i++) {
       this.vessels.push({
         type: 'vessel',
-        variant: Phaser.Math.RND.integerInRange(0, FRAME_COUNT - 1),
+        variant: Phaser.Math.RND.integerInRange(0, VESSEL_VARIANT_COUNT - 1),
         // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
         r: 120,
         drift: new Phaser.Math.Vector2(),
         vel: new Phaser.Math.Vector2(),
         offset: new Phaser.Math.Vector2(),
         transitionFactor: 1,
+        attunement: 0,
         updateTime: 0
       });
     }
@@ -175,7 +214,24 @@ export class OrbsAndVessels extends BaseScene {
     const { entity, x, y, alpha, blur } = params;
     const { type, variant, transitionFactor } = entity;
     const scale = params.scale * transitionFactor;
-    const group = type === 'vessel' ? this.vesselSprites : this.orbSprites;
+    let group: Phaser.GameObjects.Group;
+
+    if (type === 'vessel') {
+      group = this.vesselSprites;
+      const vessel = entity as VesselData;
+
+      if (vessel.attunement) {
+        (this.vesselGlowSprites.get(x, y, 'vessel_glow') as Phaser.GameObjects.Sprite)
+          .setAlpha(vessel.attunement * Math.pow(alpha, 2.5))
+          .setScale(scale)
+          .setDepth(depth - 1)
+          .setScrollFactor(0)
+          .setVisible(true)
+          .setActive(true);
+      }
+    } else {
+      group = this.orbSprites;
+    }
 
     const _blurSprite = (group.get(x, y, type + '_blur_atlas') as Phaser.GameObjects.Sprite)
       .setFrame(variant)
@@ -287,7 +343,7 @@ export class OrbsAndVessels extends BaseScene {
         if (seed % 10 === 0) {
           const orb: EntityData = {
             type: 'orb',
-            variant: seed % FRAME_COUNT,
+            variant: Phaser.Math.RND.integerInRange(0, ORB_VARIANT_COUNT - 1),
             // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
             r: 120,
             drift: new Phaser.Math.Vector2(),
@@ -384,6 +440,10 @@ export class OrbsAndVessels extends BaseScene {
       sprite.setActive(false);
       sprite.setVisible(false);
     }
+    for (const sprite of (this.vesselGlowSprites.getChildren() as Phaser.GameObjects.Image[])) {
+      sprite.setActive(false);
+      sprite.setVisible(false);
+    }
 
     renderItems.forEach((item, depth) => {
       this.drawEntity(item, depth);
@@ -392,12 +452,24 @@ export class OrbsAndVessels extends BaseScene {
     this.fpsText.setText(`FPS: ${this.game.loop.actualFps}`);
   }
 
+  updateVesselAttunements() {
+    for (const vessel of this.vessels) {
+      const attrs = this.vesselVariantAttrs[vessel.variant];
+      let attunement = 0;
+      for (const orb of this.collectedOrbs) {
+        attunement += attrs[orb.variant];
+      }
+      vessel.attunement = attunement / 3;
+    }
+  }
+
   updateVesselPhysics(entity: EntityData) {
     const { drift, vel, offset } = entity;
+    const intensity = ((entity as VesselData).attunement ?? 0);
 
     // Slowly change drift vector (fake Perlin noise)
-    drift.x += (Phaser.Math.RND.frac() - 0.5) * 0.002;
-    drift.y += (Phaser.Math.RND.frac() - 0.5) * 0.002;
+    drift.x += (Math.random() - 0.5) * (0.002 + intensity * 0.05);
+    drift.y += (Math.random() - 0.5) * (0.002 + intensity * 0.05);
     drift.x *= 0.98;
     drift.y *= 0.98;
 
@@ -406,7 +478,7 @@ export class OrbsAndVessels extends BaseScene {
     vel.y += drift.y;
 
     // Apply restoring force (like a spring to the origin)
-    const restoringStrength = 0.0008;
+    const restoringStrength = 0.0008 + (0.1 * intensity);
     vel.x += -offset.x * restoringStrength;
     vel.y += -offset.y * restoringStrength;
 
