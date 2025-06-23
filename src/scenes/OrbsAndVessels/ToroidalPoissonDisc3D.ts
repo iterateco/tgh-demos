@@ -135,6 +135,7 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
     if (this.generatedSet.has(k)) {
       return;
     }
+
     this.generatedSet.add(k);
 
     const baseX = ((ix % this.cellsX + this.cellsX) % this.cellsX) * this.cellSize;

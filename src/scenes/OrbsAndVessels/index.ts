@@ -7,7 +7,6 @@ const BG_SIZE = { width: 1024, height: 768 };
 const FRAME_WIDTH = 250;
 const VESSEL_VARIANT_COUNT = 16;
 const ORB_VARIANT_COUNT = 5;
-const ENTITY_FIELD_DENSITY = 0.65;
 
 interface EntityData {
   type: 'vessel' | 'orb'
@@ -32,10 +31,7 @@ export class OrbsAndVessels extends BaseScene {
     thrust: 25,
     velocity: new Phaser.Math.Vector3(0, 0, 25),
     damping: 0.95,
-    maxDragRadius: 2000,
-    center: new Phaser.Math.Vector2(0, 0),
-    dragAccel: 10,
-    prevPointerPos: new Phaser.Math.Vector2(0, 0)
+    dragAccel: 10
   };
 
   sky!: Phaser.GameObjects.Image;
@@ -74,10 +70,8 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   create() {
-    const { cameraProps } = this;
-    const camera = this.cameras.main;
-
-    camera.centerOn(0, 0);
+    this.cameras.main.centerOn(0, 0);
+    // this.cameras.main.setScroll(-9700, -9700);
 
     this.createBackground();
     this.createEntityField();
@@ -87,8 +81,6 @@ export class OrbsAndVessels extends BaseScene {
     this.vesselGlowSprites = this.add.group();
     this.orbSprites = this.add.group();
 
-    cameraProps.center = new Phaser.Math.Vector2(camera.scrollX, camera.scrollY);
-
     for (let i = 0; i < VESSEL_VARIANT_COUNT; i++) {
       const attrs = new Array(ORB_VARIANT_COUNT).fill(0).map(() => {
         return Phaser.Math.RND.frac();
@@ -96,14 +88,10 @@ export class OrbsAndVessels extends BaseScene {
       this.vesselVariantAttrs.push(attrs);
     }
 
-    // this.cursors = this.input.keyboard?.createCursorKeys()
-
     this.scale.on('resize', this.resize, this);
     this.resize();
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, objects) => {
-      cameraProps.prevPointerPos = new Phaser.Math.Vector2(pointer.x, pointer.y);
-
       const object = objects[0];
       if (!object) return;
 
@@ -193,11 +181,8 @@ export class OrbsAndVessels extends BaseScene {
     const worldHeight = 5000;
     const worldDepth = 20000;
 
-    const densityCoef = 1 / ENTITY_FIELD_DENSITY;
-    this.entityField = new ToroidalPoissonDisc3D<EntityData>(worldWidth, worldHeight, worldDepth, densityCoef * 500);
-    this.entityField.minPointDist = densityCoef * 400;
-
-    this.cameras.main.setScroll(worldWidth / 2, worldHeight / 2);
+    this.entityField = new ToroidalPoissonDisc3D<EntityData>(worldWidth, worldHeight, worldDepth, 1000);
+    this.entityField.minPointDist = 600;
   }
 
   drawEntity(
@@ -281,27 +266,9 @@ export class OrbsAndVessels extends BaseScene {
     const { worldWidth, worldHeight, worldDepth } = this.entityField;
 
     if (pointer.isDown) {
-      const delta = cameraProps.prevPointerPos.clone().subtract(pointer.position);
-      cameraProps.velocity.add(delta.scale(cameraProps.dragAccel));
-      cameraProps.prevPointerPos = pointer.position.clone();
-    } else {
-      cameraProps.velocity.x *= 0.9;
-      cameraProps.velocity.y *= 0.9;
-
-      const scroll = new Phaser.Math.Vector2(camera.scrollX, camera.scrollY);
-      const toCenter = cameraProps.center.clone().subtract(scroll);
-      const dist = toCenter.length();
-
-      if (dist > 0.1) {
-        const normalized = Phaser.Math.Clamp(dist / cameraProps.maxDragRadius, 0, 1);
-        const ease = Phaser.Math.Easing.Quadratic.Out(normalized);
-        const move = toCenter.normalize().scale(ease * 1000 * dt);
-        camera.scrollX += move.x;
-        camera.scrollY += move.y;
-      } else {
-        camera.scrollX = cameraProps.center.x;
-        camera.scrollY = cameraProps.center.y;
-      }
+      const { position, prevPosition } = pointer;
+      cameraProps.velocity.x -= (position.x - prevPosition.x) * cameraProps.dragAccel;
+      cameraProps.velocity.y -= (position.y - prevPosition.y) * cameraProps.dragAccel;
     }
 
     cameraProps.velocity.z += cameraProps.thrust;
@@ -310,17 +277,9 @@ export class OrbsAndVessels extends BaseScene {
     camera.scrollX += cameraProps.velocity.x * dt;
     camera.scrollY += cameraProps.velocity.y * dt;
 
-    const cameraOffset = new Phaser.Math.Vector2(camera.scrollX, camera.scrollY).subtract(cameraProps.center);
-    if (cameraOffset.length() > cameraProps.maxDragRadius) {
-      cameraOffset.setLength(cameraProps.maxDragRadius);
-      const scroll = cameraProps.center.clone().add(cameraOffset);
-      camera.scrollX = scroll.x;
-      camera.scrollY = scroll.y;
-    }
-
-    const cameraX = camera.scrollX;
-    const cameraY = camera.scrollY;
-    const cameraZ = (cameraProps.z + (cameraProps.velocity.z * dt) + worldDepth) % worldDepth;
+    const cameraX = camera.scrollX % worldWidth;
+    const cameraY = camera.scrollY % worldHeight;
+    const cameraZ = (cameraProps.z + (cameraProps.velocity.z * dt)) % worldDepth;
     cameraProps.z = cameraZ;
 
     for (const ent of this.background) {
@@ -367,64 +326,65 @@ export class OrbsAndVessels extends BaseScene {
     const renderItems = [];
 
     for (const c of circles) {
-      const dx = 0;
-      const dy = 0;
+      for (let dx = -2; dx <= 1; dx++) {
+        for (let dy = -2; dy <= 1; dy++) {
+          for (let dz = -1; dz <= 1; dz++) {
+            const wx = c.x + dx * worldWidth;
+            const wy = c.y + dy * worldHeight;
+            const wz = c.z + dz * worldDepth;
 
-      for (let dz = -1; dz <= 1; dz++) {
-        const wx = c.x + dx * worldWidth;
-        const wy = c.y + dy * worldHeight;
-        const wz = c.z + dz * worldDepth;
+            const dzFromCamera = wz - cameraZ;
+            if (dzFromCamera < 0 || dzFromCamera > cameraProps.far) continue;
 
-        const dzFromCamera = wz - cameraZ;
-        if (dzFromCamera < 0 || dzFromCamera > cameraProps.far) continue;
+            const { entity } = c;
+            const { x, y, scale } = this.project3DTo2D(wx, wy, wz, cameraX, cameraY, cameraZ);
+            const r = entity.r * scale;
 
-        const { entity } = c;
-        const { x, y, scale } = this.project3DTo2D(wx, wy, wz, cameraX, cameraY, cameraZ);
-        const r = entity.r * scale;
+            if (
+              x + r >= 0 && x - r <= width &&
+              y + r >= 0 && y - r <= height
+            ) {
+              let alpha = 1;
+              let blur = 0;
 
-        if (
-          x + r >= 0 && x - r <= width &&
-          y + r >= 0 && y - r <= height
-        ) {
-          let alpha = 1;
-          let blur = 0;
+              if (dzFromCamera < nearFadeStart || dzFromCamera > farFadeEnd) {
+                alpha = 0;
+                blur = 1;
+              } else if (dzFromCamera < nearFadeEnd) {
+                // Near
+                const t = (dzFromCamera - nearFadeStart) / (nearFadeEnd - nearFadeStart);
+                alpha = Math.pow(t, 2); // ease-in
+                blur = 0;
+              } else if (dzFromCamera > farFadeStart) {
+                // Far
+                const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
+                alpha = Math.pow(1 - t, 1.5); // ease-out
+                blur = 1 - Math.pow(1 - t, 3); // ease-out
+              } else {
+                // Fully visible between nearFadeEnd and farFadeStart
+                alpha = 1;
+                blur = 0;
+              }
 
-          if (dzFromCamera < nearFadeStart || dzFromCamera > farFadeEnd) {
-            alpha = 0;
-            blur = 1;
-          } else if (dzFromCamera < nearFadeEnd) {
-            // Near
-            const t = (dzFromCamera - nearFadeStart) / (nearFadeEnd - nearFadeStart);
-            alpha = Math.pow(t, 2); // ease-in
-            blur = 0;
-          } else if (dzFromCamera > farFadeStart) {
-            // Far
-            const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
-            alpha = Math.pow(1 - t, 1.5); // ease-out
-            blur = 1 - Math.pow(1 - t, 3); // ease-out
-          } else {
-            // Fully visible between nearFadeEnd and farFadeStart
-            alpha = 1;
-            blur = 0;
+              const itemScale = r * .0075;
+
+              if (entity.updateTime !== time) {
+                this.updateVesselPhysics(entity);
+                entity.updateTime = time;
+              }
+
+              const { offset } = entity;
+              renderItems.push({
+                entity,
+                x: x + offset.x * itemScale,
+                y: y + offset.y * itemScale,
+                wz,
+                scale: itemScale,
+                alpha,
+                blur
+              });
+            }
           }
-
-          const scale = r * .0075;
-
-          if (entity.updateTime !== time) {
-            this.updateVesselPhysics(entity);
-            entity.updateTime = time;
-          }
-
-          const { offset } = entity;
-          renderItems.push({
-            entity,
-            x: x + offset.x * scale,
-            y: y + offset.y * scale,
-            wz,
-            scale,
-            alpha,
-            blur
-          });
         }
       }
     }
@@ -449,7 +409,9 @@ export class OrbsAndVessels extends BaseScene {
       this.drawEntity(item, depth);
     });
 
-    this.fpsText.setText(`FPS: ${this.game.loop.actualFps}`);
+    const text = `FPS: ${this.game.loop.actualFps}`;
+    // text += `\nEntities: ${renderItems.length}`;
+    this.fpsText.setText(text);
   }
 
   updateVesselAttunements() {
