@@ -86,9 +86,11 @@ export class OrbController extends SceneController {
   }
 
   private initSprite(sprite: Orb) {
-    sprite.blur = sprite.scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.primary = sprite.scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.burst = sprite.scene.add.sprite(0, 0, 'orb_burst').setScale(1.15);
+    const { scene } = this;
+
+    sprite.blur = scene.add.sprite(0, 0, this.textureAtlas.key);
+    sprite.primary = scene.add.sprite(0, 0, this.textureAtlas.key);
+    sprite.burst = scene.add.sprite(0, 0, 'orb_burst').setScale(1.15);
 
     sprite.add(sprite.blur);
     sprite.add(sprite.primary);

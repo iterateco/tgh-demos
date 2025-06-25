@@ -40,7 +40,11 @@ export function poissonDisc3D(width: number, height: number, depth: number, minD
     return false;
   }
 
-  insertPoint(rnd.frac() * width, rnd.frac() * height, rnd.frac() * depth);
+  insertPoint(
+    Math.round(rnd.frac() * width),
+    Math.round(rnd.frac() * height),
+    Math.round(rnd.frac() * depth)
+  );
 
   while (active.length > 0) {
     const idx = Math.floor(rnd.frac() * active.length);
@@ -49,10 +53,10 @@ export function poissonDisc3D(width: number, height: number, depth: number, minD
     for (let i = 0; i < k; i++) {
       const theta = rnd.frac() * 2 * Math.PI;
       const phi = Math.acos(2 * rnd.frac() - 1);
-      const r = minDist * (1 + rnd.frac());
-      const x = origin.x + r * Math.sin(phi) * Math.cos(theta);
-      const y = origin.y + r * Math.sin(phi) * Math.sin(theta);
-      const z = origin.z + r * Math.cos(phi);
+      const r = Math.round(minDist * (1 + rnd.frac()));
+      const x = Math.round(origin.x + r * Math.sin(phi) * Math.cos(theta));
+      const y = Math.round(origin.y + r * Math.sin(phi) * Math.sin(theta));
+      const z = Math.round(origin.z + r * Math.cos(phi));
       if (
         x >= 0 && x < width &&
         y >= 0 && y < height &&

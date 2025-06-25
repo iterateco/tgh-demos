@@ -115,12 +115,14 @@ export class VesselController extends SceneController {
   }
 
   private initSprite(sprite: Vessel) {
-    sprite.glassBlur = this.scene.add.sprite(0, 0, 'vessel_glass_blur');
-    sprite.glass = this.scene.add.sprite(0, 0, 'vessel_glass');
-    sprite.blur = this.scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.primary = this.scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.glow = this.scene.add.sprite(0, 0, 'vessel_glow');
-    sprite.lock = this.scene.add.sprite(0, -3, 'lock');
+    const { scene } = this;
+
+    sprite.glassBlur = scene.add.sprite(0, 0, 'vessel_glass_blur');
+    sprite.glass = scene.add.sprite(0, 0, 'vessel_glass');
+    sprite.blur = scene.add.sprite(0, 0, this.textureAtlas.key);
+    sprite.primary = scene.add.sprite(0, 0, this.textureAtlas.key);
+    sprite.glow = scene.add.sprite(0, 0, 'vessel_glow');
+    sprite.lock = scene.add.sprite(0, -3, 'lock');
 
     sprite.add(sprite.glassBlur);
     sprite.add(sprite.glass);

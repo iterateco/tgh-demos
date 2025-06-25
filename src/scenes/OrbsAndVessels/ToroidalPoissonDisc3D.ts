@@ -48,7 +48,7 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
     }
   ) {
     const { width, height, cameraX, cameraY, cameraZ, near = 0, far = 1000, fov = 500 } = params;
-    const margin = 150;
+    const margin = Math.round(width / 2);
 
     const startZ = Math.floor((cameraZ + near) / this.cellSize);
     const endZ = Math.floor((cameraZ + far + margin) / this.cellSize);

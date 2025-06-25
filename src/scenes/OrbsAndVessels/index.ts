@@ -62,7 +62,6 @@ export class OrbsAndVessels extends BaseScene {
     this.orbController = new OrbController(this);
 
     this.cameras.main.centerOn(0, 0);
-    // this.cameras.main.setScroll(-9700, -9700);
 
     this.createBackground();
     this.createEntityField();
@@ -203,11 +202,11 @@ export class OrbsAndVessels extends BaseScene {
 
     camera.scrollX += cameraProps.velocity.x * dt;
     camera.scrollY += cameraProps.velocity.y * dt;
+    cameraProps.z = (cameraProps.z + cameraProps.velocity.z * dt) % worldDepth;
 
-    const cameraX = camera.scrollX % worldWidth;
-    const cameraY = camera.scrollY % worldHeight;
-    const cameraZ = (cameraProps.z + (cameraProps.velocity.z * dt)) % worldDepth;
-    cameraProps.z = cameraZ;
+    const cameraX = Phaser.Math.Wrap(camera.scrollX + worldWidth / 2, 0, worldWidth);
+    const cameraY = Phaser.Math.Wrap(camera.scrollY + worldHeight / 2, 0, worldHeight);
+    const cameraZ = Phaser.Math.Wrap(cameraProps.z + worldDepth / 2, 0, worldDepth);
 
     for (const ent of this.background) {
       ent.sprite.setTilePosition(camera.scrollX * ent.scrollRatio, camera.scrollY * ent.scrollRatio);
@@ -239,67 +238,65 @@ export class OrbsAndVessels extends BaseScene {
     const farFadeEnd = cameraProps.far;
 
     const renderItems = [];
+    const dy = 0;
 
     for (const c of circles) {
-      for (let dx = -2; dx <= 1; dx++) {
-        for (let dy = -2; dy <= 1; dy++) {
-          for (let dz = -1; dz <= 1; dz++) {
-            const wx = c.x + dx * worldWidth;
-            const wy = c.y + dy * worldHeight;
-            const wz = c.z + dz * worldDepth;
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const wx = c.x + dx * worldWidth;
+          const wy = c.y + dy * worldHeight;
+          const wz = c.z + dz * worldDepth;
 
-            const dzFromCamera = wz - cameraZ;
-            if (dzFromCamera < 0 || dzFromCamera > cameraProps.far) continue;
+          const dzFromCamera = wz - cameraZ;
+          if (dzFromCamera < 0 || dzFromCamera > cameraProps.far) continue;
 
-            const { entity } = c;
-            const { x, y, scale } = this.project3DTo2D(wx, wy, wz, cameraX, cameraY, cameraZ);
-            const r = entity.r * scale;
+          const { entity } = c;
+          const { x, y, scale } = this.project3DTo2D(wx, wy, wz, cameraX, cameraY, cameraZ);
+          const r = entity.r * scale;
 
-            if (
-              x + r >= 0 && x - r <= width &&
-              y + r >= 0 && y - r <= height
-            ) {
-              let alpha = 1;
-              let blur = 0;
+          if (
+            x + r >= 0 && x - r <= width &&
+            y + r >= 0 && y - r <= height
+          ) {
+            let alpha = 1;
+            let blur = 0;
 
-              if (dzFromCamera < nearFadeStart || dzFromCamera > farFadeEnd) {
-                alpha = 0;
-                blur = 1;
-              } else if (dzFromCamera < nearFadeEnd) {
-                // Near
-                const t = (dzFromCamera - nearFadeStart) / (nearFadeEnd - nearFadeStart);
-                alpha = Math.pow(t, 2); // ease-in
-                blur = 0;
-              } else if (dzFromCamera > farFadeStart) {
-                // Far
-                const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
-                alpha = Math.pow(1 - t, 1.5); // ease-out
-                blur = 1 - Math.pow(1 - t, 3); // ease-out
-              } else {
-                // Fully visible between nearFadeEnd and farFadeStart
-                alpha = 1;
-                blur = 0;
-              }
-
-              const itemScale = r * .0075;
-
-              if (entity.updateTime !== time) {
-                this.updateEntityPhysics(entity);
-                entity.updateTime = time;
-              }
-
-              const { offset } = entity;
-              renderItems.push({
-                entity,
-                x: x + offset.x * itemScale,
-                y: y + offset.y * itemScale,
-                wz,
-                scale: itemScale,
-                alpha,
-                blur,
-                depth: 100000 - wz
-              });
+            if (dzFromCamera < nearFadeStart || dzFromCamera > farFadeEnd) {
+              alpha = 0;
+              blur = 1;
+            } else if (dzFromCamera < nearFadeEnd) {
+              // Near
+              const t = (dzFromCamera - nearFadeStart) / (nearFadeEnd - nearFadeStart);
+              alpha = Math.pow(t, 2); // ease-in
+              blur = 0;
+            } else if (dzFromCamera > farFadeStart) {
+              // Far
+              const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
+              alpha = Math.pow(1 - t, 1.5); // ease-out
+              blur = 1 - Math.pow(1 - t, 3); // ease-out
+            } else {
+              // Fully visible between nearFadeEnd and farFadeStart
+              alpha = 1;
+              blur = 0;
             }
+
+            const itemScale = r * .0075;
+
+            if (entity.updateTime !== time) {
+              this.updateEntityPhysics(entity);
+              entity.updateTime = time;
+            }
+
+            const { offset } = entity;
+            renderItems.push({
+              entity,
+              x: x + offset.x * itemScale,
+              y: y + offset.y * itemScale,
+              scale: itemScale,
+              alpha,
+              blur,
+              depth: 100000 - wz
+            });
           }
         }
       }
@@ -314,9 +311,9 @@ export class OrbsAndVessels extends BaseScene {
       sprite.setVisible(false);
     }
 
-    renderItems.forEach(item => {
+    for (const item of renderItems) {
       this.drawEntity(item);
-    });
+    }
 
     let text = `FPS: ${this.game.loop.actualFps}`;
     // text += `\nEntities: ${renderItems.length}`;
@@ -390,6 +387,8 @@ export class OrbsAndVessels extends BaseScene {
     const scaleX = width / BG_SIZE.width;
     const scaleY = height / BG_SIZE.height;
     const scale = Math.max(scaleX, scaleY);
+    const camera = this.cameras.main;
+    const { worldWidth, worldHeight } = this.entityField;
 
     this.sky.setScale(scale);
     this.sky.setPosition(width / 2, height / 2);
@@ -398,5 +397,12 @@ export class OrbsAndVessels extends BaseScene {
       ent.sprite.setSize(width * 2, height * 2);
       ent.sprite.setOrigin(0, 0);
     }
+
+    camera.setBounds(
+      -Infinity,
+      -(worldHeight / 2 - height),
+      Infinity,
+      (worldHeight - height),
+    );
   }
 }
