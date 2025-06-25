@@ -1,11 +1,10 @@
 import * as Phaser from 'phaser';
 import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
-import { EntityTextureManager } from './EntityTextureManager';
-import { Orb } from './Orb';
+import { OrbController } from './OrbController';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
-import { Vessel } from './Vessel';
-import { EntityData, FEELING_NAMES, ORB_VARIANTS, VESSEL_VARIANTS, VesselData } from './types';
+import { FieldEntity, ORB_VARIANTS } from './types';
+import { VesselController } from './VesselController';
 
 const BG_SIZE = { width: 1024, height: 768 };
 
@@ -26,19 +25,12 @@ export class OrbsAndVessels extends BaseScene {
   clouds!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable & { accel: number })[];
   background!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable)[];
 
-  vessels: VesselData[] = [];
-  orbs: EntityData[] = [];
-  collectedOrbs: EntityData[] = [];
+  vesselController: VesselController;
+  orbController: OrbController;
 
-  vesselSprites!: Phaser.GameObjects.Group;
-  vesselGlowSprites!: Phaser.GameObjects.Group;
-  orbSprites!: Phaser.GameObjects.Group;
-  entityField!: ToroidalPoissonDisc3D<EntityData>;
+  collectedOrbs: FieldEntity[] = [];
 
-  attunementScale = 1;
-  orbRotation = 0;
-
-  entityTextureManager!: EntityTextureManager;
+  entityField!: ToroidalPoissonDisc3D<FieldEntity>;
 
   fpsText!: Phaser.GameObjects.Text;
 
@@ -55,6 +47,8 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('clouds_2', 'clouds_2.png');
     this.load.image('vessel', 'heart_1.png');
     this.load.image('vessel_blur', 'heart_1_blur.png');
+    this.load.image('vessel_glass', 'heart_1_glass.png');
+    this.load.image('vessel_glass_blur', 'heart_1_glass_blur.png');
     this.load.image('vessel_glow', 'heart_1_glow.png');
     this.load.image('vessel_overlay', 'heart_1_overlay.png');
     this.load.image('lock', 'lock_1.png');
@@ -64,35 +58,15 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   create() {
+    this.vesselController = new VesselController(this);
+    this.orbController = new OrbController(this);
+
     this.cameras.main.centerOn(0, 0);
     // this.cameras.main.setScroll(-9700, -9700);
 
     this.createBackground();
     this.createEntityField();
     this.createStats();
-
-    this.entityTextureManager = new EntityTextureManager(this);
-
-    this.vesselSprites = this.add.group({
-      classType: Vessel,
-      createCallback: (orb: Orb) => orb.init(this.entityTextureManager)
-    });
-
-    this.tweens.add({
-      targets: this,
-      attunementScale: { from: -0.125, to: 0.125 },
-      ease: 'Sine.easeInOut',
-      duration: 300,
-      yoyo: true,
-      repeat: -1,
-      delay: 0,
-      hold: 100
-    });
-
-    this.orbSprites = this.add.group({
-      classType: Orb,
-      createCallback: (orb: Orb) => orb.init(this.entityTextureManager)
-    });
 
     this.scale.on('resize', this.resize, this);
     this.resize();
@@ -170,56 +144,29 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   createEntityField() {
-    for (let i = 0; i < 1000; i++) {
-      const attributes: { [name: string]: number } = {};
-      for (const attrName of FEELING_NAMES) {
-        attributes[attrName] = Phaser.Math.RND.frac();
-      }
-
-      this.vessels.push({
-        type: 'vessel',
-        variant: Phaser.Math.RND.integerInRange(0, VESSEL_VARIANTS.length - 1),
-        // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
-        r: 120,
-        drift: new Phaser.Math.Vector2(),
-        vel: new Phaser.Math.Vector2(),
-        offset: new Phaser.Math.Vector2(),
-        transitionFactor: 1,
-        attunement: 0,
-        updateTime: 0,
-        locked: Phaser.Math.RND.frac() > 0.8,
-        attributes,
-      });
-    }
-
     const worldWidth = 5000;
     const worldHeight = 5000;
     const worldDepth = 20000;
 
-    this.entityField = new ToroidalPoissonDisc3D<EntityData>(worldWidth, worldHeight, worldDepth, 1000);
+    this.entityField = new ToroidalPoissonDisc3D<FieldEntity>(worldWidth, worldHeight, worldDepth, 1000);
     this.entityField.minPointDist = 700;
   }
 
   drawEntity(
     params: {
-      entity: EntityData,
-      x: number,
-      y: number,
-      scale: number,
-      alpha: number,
+      entity: FieldEntity
+      x: number
+      y: number
+      scale: number
+      alpha: number
       blur: number
-    },
-    depth: number
+      depth: number
+    }
   ) {
     if (params.entity.type === 'vessel') {
-      const entity = params.entity as VesselData;
-      const vessel = (this.vesselSprites.get() as Vessel);
-      const { scale } = params;
-      const scaleFactor = 1 + this.attunementScale * entity.attunement;
-      vessel.reset({ ...params, entity, scale: scale * scaleFactor }, depth);
+      this.vesselController.drawSprite(params);
     } else {
-      const orb = (this.orbSprites.get() as Orb);
-      orb.reset({ ...params, rotation: this.orbRotation }, depth);
+      this.orbController.drawSprite(params);
     }
   }
 
@@ -233,6 +180,9 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   update(time: number, delta: number) {
+    this.vesselController.update(time, delta);
+    this.orbController.update(time, delta);
+
     const dt = delta / 1000;
     const { width, height } = this.scale;
     const camera = this.cameras.main;
@@ -267,8 +217,6 @@ export class OrbsAndVessels extends BaseScene {
       cloud.sprite.setTilePosition(cloud.sprite.tilePositionX + time * cloud.accel, cloud.sprite.tilePositionY);
     }
 
-    this.orbRotation += 0.005;
-
     const circles = this.entityField.generate({
       width,
       height,
@@ -279,21 +227,9 @@ export class OrbsAndVessels extends BaseScene {
       fov: cameraProps.fov,
       getEntity: (seed) => {
         if (seed % 10 === 0) {
-          const orb: EntityData = {
-            type: 'orb',
-            variant: Phaser.Math.RND.integerInRange(0, ORB_VARIANTS.length - 1),
-            // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
-            r: 120,
-            drift: new Phaser.Math.Vector2(),
-            vel: new Phaser.Math.Vector2(),
-            offset: new Phaser.Math.Vector2(),
-            transitionFactor: 1,
-            updateTime: 0
-          };
-          this.orbs.push(orb);
-          return orb;
+          return this.orbController.createEntity();
         }
-        return this.vessels[seed % this.vessels.length];
+        return this.vesselController.entities[seed % this.vesselController.entities.length];
       }
     });
 
@@ -348,7 +284,7 @@ export class OrbsAndVessels extends BaseScene {
               const itemScale = r * .0075;
 
               if (entity.updateTime !== time) {
-                this.updateVesselPhysics(entity);
+                this.updateEntityPhysics(entity);
                 entity.updateTime = time;
               }
 
@@ -360,7 +296,8 @@ export class OrbsAndVessels extends BaseScene {
                 wz,
                 scale: itemScale,
                 alpha,
-                blur
+                blur,
+                depth: 100000 - wz
               });
             }
           }
@@ -368,20 +305,17 @@ export class OrbsAndVessels extends BaseScene {
       }
     }
 
-    // Sort by z-depth, farthest to nearest
-    renderItems.sort((a, b) => (b.wz - cameraZ) - (a.wz - cameraZ));
-
-    for (const sprite of (this.vesselSprites.getChildren() as Phaser.GameObjects.Image[])) {
+    for (const sprite of (this.vesselController.sprites.getChildren() as Phaser.GameObjects.Image[])) {
       sprite.setActive(false);
       sprite.setVisible(false);
     }
-    for (const sprite of (this.orbSprites.getChildren() as Phaser.GameObjects.Image[])) {
+    for (const sprite of (this.orbController.sprites.getChildren() as Phaser.GameObjects.Image[])) {
       sprite.setActive(false);
       sprite.setVisible(false);
     }
 
-    renderItems.forEach((item, depth) => {
-      this.drawEntity(item, depth);
+    renderItems.forEach(item => {
+      this.drawEntity(item);
     });
 
     let text = `FPS: ${this.game.loop.actualFps}`;
@@ -395,7 +329,7 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   updateVesselAttunements() {
-    for (const vessel of this.vessels) {
+    for (const vessel of this.vesselController.entities) {
       if (vessel.locked) {
         vessel.attunement = 0;
         continue;
@@ -413,7 +347,7 @@ export class OrbsAndVessels extends BaseScene {
     };
   }
 
-  updateVesselPhysics(entity: EntityData) {
+  updateEntityPhysics(entity: FieldEntity) {
     const { drift, vel, offset } = entity;
     const intensity = 0;
 

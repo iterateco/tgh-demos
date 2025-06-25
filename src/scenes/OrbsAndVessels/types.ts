@@ -28,18 +28,21 @@ export const ORB_VARIANTS = Object.entries(FEELINGS).map(([name, h]) => {
   };
 });
 
-export interface EntityData {
+export interface FieldEntity {
   type: 'vessel' | 'orb'
   variant: number
   r: number
   drift: Phaser.Math.Vector2
   vel: Phaser.Math.Vector2
   offset: Phaser.Math.Vector2
-  transitionFactor: number
   updateTime: number
 }
 
-export interface VesselData extends EntityData {
+export interface OrbEntity extends FieldEntity {
+  transitionFactor: number
+}
+
+export interface VesselEntity extends FieldEntity {
   attributes: { [name: string]: number },
   attunement: number
   locked: boolean
