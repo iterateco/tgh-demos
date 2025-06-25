@@ -20,6 +20,8 @@ export class OrbsAndVessels extends BaseScene {
     dragAccel: 10
   };
 
+  prevPointerPos?: Phaser.Math.Vector2;
+
   sky!: Phaser.GameObjects.Image;
   clouds!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable & { accel: number })[];
   background!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable)[];
@@ -96,6 +98,8 @@ export class OrbsAndVessels extends BaseScene {
     this.resize();
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, objects: any) => {
+      this.prevPointerPos = pointer.position.clone();
+
       const object = objects[0];
       if (!object) return;
 
@@ -235,11 +239,13 @@ export class OrbsAndVessels extends BaseScene {
     const { cameraProps } = this;
     const pointer = this.input.activePointer;
     const { worldWidth, worldHeight, worldDepth } = this.entityField;
+    const { position } = pointer;
 
     if (pointer.isDown) {
-      const { position, prevPosition } = pointer;
+      const prevPosition = this.prevPointerPos;
       cameraProps.velocity.x -= (position.x - prevPosition.x) * cameraProps.dragAccel;
       cameraProps.velocity.y -= (position.y - prevPosition.y) * cameraProps.dragAccel;
+      this.prevPointerPos = position.clone();
     }
 
     cameraProps.velocity.z += cameraProps.thrust;
