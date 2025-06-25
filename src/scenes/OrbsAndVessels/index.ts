@@ -3,7 +3,7 @@ import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
 import { OrbController } from './OrbController';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
-import { FieldEntity, ORB_VARIANTS } from './types';
+import { FieldEntity, ORB_VARIANTS, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
 const BG_SIZE = { width: 1024, height: 768 };
@@ -151,24 +151,6 @@ export class OrbsAndVessels extends BaseScene {
     this.entityField.minPointDist = 700;
   }
 
-  drawEntity(
-    params: {
-      entity: FieldEntity
-      x: number
-      y: number
-      scale: number
-      alpha: number
-      blur: number
-      depth: number
-    }
-  ) {
-    if (params.entity.type === 'vessel') {
-      this.vesselController.drawSprite(params);
-    } else {
-      this.orbController.drawSprite(params);
-    }
-  }
-
   createStats() {
     this.fpsText = this.add.text(10, 10, 'FPS: 0', {
       fontSize: 12,
@@ -238,6 +220,7 @@ export class OrbsAndVessels extends BaseScene {
     const farFadeEnd = cameraProps.far;
 
     const renderItems = [];
+    const renderedEntities: Set<FieldEntity> = new Set();
     const dy = 0;
 
     for (const c of circles) {
@@ -280,25 +263,27 @@ export class OrbsAndVessels extends BaseScene {
               blur = 0;
             }
 
-            const itemScale = r * .0075;
+            renderedEntities.add(entity);
 
-            if (entity.updateTime !== time) {
-              this.updateEntityPhysics(entity);
-              entity.updateTime = time;
-            }
-
-            const { offset } = entity;
             renderItems.push({
               entity,
-              x: x + offset.x * itemScale,
-              y: y + offset.y * itemScale,
-              scale: itemScale,
+              x,
+              y,
+              scale: r * .0075,
               alpha,
               blur,
               depth: 100000 - wz
             });
           }
         }
+      }
+    }
+
+    for (const entity of renderedEntities) {
+      if (entity.type === 'vessel') {
+        this.vesselController.updateEntity(entity as VesselEntity, time, delta);
+      } else {
+        // this.orbController.updateEntity(entity as VesselEntity);
       }
     }
 
@@ -312,7 +297,11 @@ export class OrbsAndVessels extends BaseScene {
     }
 
     for (const item of renderItems) {
-      this.drawEntity(item);
+      if (item.entity.type === 'vessel') {
+        this.vesselController.drawSprite(item);
+      } else {
+        this.orbController.drawSprite(item);
+      }
     }
 
     let text = `FPS: ${this.game.loop.actualFps}`;
@@ -344,33 +333,7 @@ export class OrbsAndVessels extends BaseScene {
     };
   }
 
-  updateEntityPhysics(entity: FieldEntity) {
-    const { drift, vel, offset } = entity;
-    const intensity = 0;
 
-    // Slowly change drift vector (fake Perlin noise)
-    drift.x += (Math.random() - 0.5) * (0.002 + intensity * 0.05);
-    drift.y += (Math.random() - 0.5) * (0.002 + intensity * 0.05);
-    drift.x *= 0.98;
-    drift.y *= 0.98;
-
-    // Apply drift to velocity
-    vel.x += drift.x;
-    vel.y += drift.y;
-
-    // Apply restoring force (like a spring to the origin)
-    const restoringStrength = 0.0008 + (0.1 * intensity);
-    vel.x += -offset.x * restoringStrength;
-    vel.y += -offset.y * restoringStrength;
-
-    // Apply friction
-    vel.x *= 0.99;
-    vel.y *= 0.99;
-
-    // Update position
-    offset.x += vel.x;
-    offset.y += vel.y;
-  }
 
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {
     const { fov } = this.cameraProps;
@@ -388,7 +351,7 @@ export class OrbsAndVessels extends BaseScene {
     const scaleY = height / BG_SIZE.height;
     const scale = Math.max(scaleX, scaleY);
     const camera = this.cameras.main;
-    const { worldWidth, worldHeight } = this.entityField;
+    const { worldHeight } = this.entityField;
 
     this.sky.setScale(scale);
     this.sky.setPosition(width / 2, height / 2);

@@ -40,6 +40,34 @@ export class VesselController extends SceneController {
 
   // }
 
+  updateEntity(entity: VesselEntity, _time: number, _delta: number) {
+    const { drift, vel, offset } = entity;
+    const intensity = 0;
+
+    // Slowly change drift vector (fake Perlin noise)
+    drift.x += (Math.random() - 0.5) * (0.002 + intensity * 0.05);
+    drift.y += (Math.random() - 0.5) * (0.002 + intensity * 0.05);
+    drift.x *= 0.98;
+    drift.y *= 0.98;
+
+    // Apply drift to velocity
+    vel.x += drift.x;
+    vel.y += drift.y;
+
+    // Apply restoring force (like a spring to the origin)
+    const restoringStrength = 0.0008 + (0.1 * intensity);
+    vel.x += -offset.x * restoringStrength;
+    vel.y += -offset.y * restoringStrength;
+
+    // Apply friction
+    vel.x *= 0.99;
+    vel.y *= 0.99;
+
+    // Update position
+    offset.x += vel.x;
+    offset.y += vel.y;
+  }
+
   drawSprite(
     params: {
       entity: FieldEntity,
@@ -51,10 +79,13 @@ export class VesselController extends SceneController {
       depth: number
     }
   ) {
-    const sprite = (this.sprites.get() as Vessel);
-    const { x, y, alpha, blur, depth } = params;
     const entity = params.entity as VesselEntity;
-    const { variant, attunement } = entity;
+    const { variant, attunement, offset } = entity;
+    const sprite = (this.sprites.get() as Vessel);
+    const { alpha, blur, depth } = params;
+    const x = params.x + offset.x * params.scale;
+    const y = params.y + offset.y * params.scale;
+
     const attunementScaleFactor = 1 + this.attunementScale * attunement;
     const scale = params.scale * attunementScaleFactor;
 
@@ -107,7 +138,6 @@ export class VesselController extends SceneController {
         vel: new Phaser.Math.Vector2(),
         offset: new Phaser.Math.Vector2(),
         attunement: 0,
-        updateTime: 0,
         locked: Phaser.Math.RND.frac() > 0.8,
         attributes,
       });

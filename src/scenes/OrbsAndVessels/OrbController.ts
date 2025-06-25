@@ -33,11 +33,7 @@ export class OrbController extends SceneController {
       variant: Phaser.Math.RND.integerInRange(0, ORB_VARIANTS.length - 1),
       // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
       r: 120,
-      drift: new Phaser.Math.Vector2(),
-      vel: new Phaser.Math.Vector2(),
-      offset: new Phaser.Math.Vector2(),
-      transitionFactor: 1,
-      updateTime: 0
+      transitionFactor: 1
     };
     this.entities.push(orb);
     return orb;
@@ -115,4 +111,13 @@ class Orb extends Phaser.GameObjects.Container {
   blur: Phaser.GameObjects.Image;
   primary: Phaser.GameObjects.Image;
   burst: Phaser.GameObjects.Image;
+}
+
+function harms(freq: Phaser.Math.Vector3, amp: Phaser.Math.Vector3, phase: Phaser.Math.Vector3, time: number) {
+  const twopi = 6.28319;
+  let val = 0;
+  for (let h = 0; h < 3; h++) {
+    val += amp[h] * Math.cos(time * freq[h] * twopi + phase[h] / 360 * twopi);
+  }
+  return (1 + val) / 2;
 }

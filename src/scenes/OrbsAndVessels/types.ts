@@ -32,10 +32,6 @@ export interface FieldEntity {
   type: 'vessel' | 'orb'
   variant: number
   r: number
-  drift: Phaser.Math.Vector2
-  vel: Phaser.Math.Vector2
-  offset: Phaser.Math.Vector2
-  updateTime: number
 }
 
 export interface OrbEntity extends FieldEntity {
@@ -46,4 +42,7 @@ export interface VesselEntity extends FieldEntity {
   attributes: { [name: string]: number },
   attunement: number
   locked: boolean
+  drift: Phaser.Math.Vector2
+  vel: Phaser.Math.Vector2
+  offset: Phaser.Math.Vector2
 }
