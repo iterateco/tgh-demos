@@ -3,6 +3,21 @@ import { SceneController } from './SceneController';
 import { TextureAtlas } from './TextureAtlas';
 import { FieldEntity, ORB_VARIANTS, OrbEntity } from './types';
 
+const MOVE_CONFIG = {
+  x: {
+    freq: [0.4, 0.66, 0.78],
+    amp: [0.8, 0.24, 0.18],
+    phase: [0., 45., 55.],
+  },
+  y: {
+    freq: [0.415, 0.61, 0.82],
+    amp: [0.72, 0.28, 0.15],
+    phase: [90, 120, 10],
+  },
+  midPoint: new Phaser.Math.Vector2(0.35, 0.15),
+  scale: new Phaser.Math.Vector2(400, 400)
+};
+
 export class OrbController extends SceneController {
   entities: FieldEntity[] = [];
   orbRotation = 0;
@@ -33,10 +48,25 @@ export class OrbController extends SceneController {
       variant: Phaser.Math.RND.integerInRange(0, ORB_VARIANTS.length - 1),
       // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
       r: 120,
-      transitionFactor: 1
+      offset: new Phaser.Math.Vector2(),
+      seed: Phaser.Math.RND.frac(),
+      transitionFactor: 1,
     };
     this.entities.push(orb);
     return orb;
+  }
+
+  updateEntity(entity: OrbEntity, time: number, _delta: number) {
+    const t = (time + entity.seed * 9999) * 0.0005;
+    const { x, y, midPoint, scale } = MOVE_CONFIG;
+    const ppos = new Phaser.Math.Vector2(
+      harms(x.freq, x.amp, x.phase, t),
+      harms(y.freq, y.amp, y.phase, t)
+    )
+      .add(midPoint)
+      .multiply(scale);
+
+    entity.offset = ppos;
   }
 
   drawSprite(
@@ -50,9 +80,11 @@ export class OrbController extends SceneController {
       depth: number
     }
   ) {
-    const { x, y, alpha, blur, depth } = params;
+    const { alpha, blur, depth } = params;
     const entity = params.entity as OrbEntity;
-    const { variant } = entity;
+    const { variant, offset } = entity;
+    const x = params.x + offset.x * params.scale;
+    const y = params.y + offset.y * params.scale;
     const scale = params.scale * entity.transitionFactor;
     const sprite = (this.sprites.get() as Orb);
 
@@ -95,6 +127,8 @@ export class OrbController extends SceneController {
     sprite.setSize(sprite.primary.width, sprite.primary.height);
     sprite.setScrollFactor(0);
     sprite.setInteractive();
+
+    sprite.postFX.addBloom(0xffffff, 4, 2, 1, 3);
   }
 
   private prepareTextureAtlas(variant: number) {
@@ -113,7 +147,7 @@ class Orb extends Phaser.GameObjects.Container {
   burst: Phaser.GameObjects.Image;
 }
 
-function harms(freq: Phaser.Math.Vector3, amp: Phaser.Math.Vector3, phase: Phaser.Math.Vector3, time: number) {
+function harms(freq: number[], amp: number[], phase: number[], time: number) {
   const twopi = 6.28319;
   let val = 0;
   for (let h = 0; h < 3; h++) {

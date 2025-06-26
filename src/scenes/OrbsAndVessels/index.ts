@@ -3,7 +3,7 @@ import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
 import { OrbController } from './OrbController';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
-import { FieldEntity, ORB_VARIANTS, VesselEntity } from './types';
+import { FieldEntity, ORB_VARIANTS, OrbEntity, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
 const BG_SIZE = { width: 1024, height: 768 };
@@ -45,11 +45,10 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('stars_2', 'stars_2.png');
     this.load.image('clouds_1', 'clouds_1.png');
     this.load.image('clouds_2', 'clouds_2.png');
-    this.load.image('vessel', 'heart_1.png');
+    this.load.image('vessel', 'heart_2.png');
     this.load.image('vessel_blur', 'heart_1_blur.png');
     this.load.image('vessel_glass', 'heart_1_glass.png');
     this.load.image('vessel_glass_blur', 'heart_1_glass_blur.png');
-    this.load.image('vessel_glow', 'heart_1_glow.png');
     this.load.image('vessel_overlay', 'heart_1_overlay.png');
     this.load.image('lock', 'lock_1.png');
     this.load.image('orb_cloud', 'orb_1_cloud.png');
@@ -222,6 +221,7 @@ export class OrbsAndVessels extends BaseScene {
     const renderItems = [];
     const renderedEntities: Set<FieldEntity> = new Set();
     const dy = 0;
+    const margin = 100;
 
     for (const c of circles) {
       for (let dx = -1; dx <= 1; dx++) {
@@ -238,8 +238,8 @@ export class OrbsAndVessels extends BaseScene {
           const r = entity.r * scale;
 
           if (
-            x + r >= 0 && x - r <= width &&
-            y + r >= 0 && y - r <= height
+            x + r >= -margin && x - r <= width + margin &&
+            y + r >= -margin && y - r <= height + margin
           ) {
             let alpha = 1;
             let blur = 0;
@@ -283,7 +283,7 @@ export class OrbsAndVessels extends BaseScene {
       if (entity.type === 'vessel') {
         this.vesselController.updateEntity(entity as VesselEntity, time, delta);
       } else {
-        // this.orbController.updateEntity(entity as VesselEntity);
+        this.orbController.updateEntity(entity as OrbEntity, time, delta);
       }
     }
 
@@ -329,11 +329,9 @@ export class OrbsAndVessels extends BaseScene {
           attunement += attrs[variantProps.name];
         }
       }
-      vessel.attunement = Math.pow(attunement / 3, 2);
+      vessel.targetAttunement = Math.pow(attunement / 3, 2);
     };
   }
-
-
 
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {
     const { fov } = this.cameraProps;

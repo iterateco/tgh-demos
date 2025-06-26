@@ -40,7 +40,7 @@ export class VesselController extends SceneController {
 
   // }
 
-  updateEntity(entity: VesselEntity, _time: number, _delta: number) {
+  updateEntity(entity: VesselEntity, _time: number, delta: number) {
     const { drift, vel, offset } = entity;
     const intensity = 0;
 
@@ -66,6 +66,18 @@ export class VesselController extends SceneController {
     // Update position
     offset.x += vel.x;
     offset.y += vel.y;
+
+    const attunementDiff = entity.targetAttunement - entity.attunement;
+    const attunementInc = 0.0005 * delta;
+
+    if (attunementDiff) {
+      if (Math.abs(attunementDiff) < attunementInc) {
+        entity.attunement = entity.targetAttunement;
+      } else {
+        const attunementDir = attunementDiff > 0 ? 1 : -1;
+        entity.attunement += attunementInc * attunementDir;
+      }
+    }
   }
 
   drawSprite(
@@ -79,10 +91,11 @@ export class VesselController extends SceneController {
       depth: number
     }
   ) {
+    const { alpha, blur, depth } = params;
     const entity = params.entity as VesselEntity;
     const { variant, attunement, offset } = entity;
     const sprite = (this.sprites.get() as Vessel);
-    const { alpha, blur, depth } = params;
+
     const x = params.x + offset.x * params.scale;
     const y = params.y + offset.y * params.scale;
 
@@ -107,8 +120,6 @@ export class VesselController extends SceneController {
     sprite.primary
       .setFrame(this.textureAtlas.getFrameName('primary', variant))
       .setAlpha(primaryAlpha * attunement);
-
-    sprite.glow.setAlpha(primaryAlpha * Math.pow(attunement, 2));
 
     sprite.lock.setAlpha(entity.locked ? primaryAlpha : 0);
 
@@ -137,6 +148,7 @@ export class VesselController extends SceneController {
         drift: new Phaser.Math.Vector2(),
         vel: new Phaser.Math.Vector2(),
         offset: new Phaser.Math.Vector2(),
+        targetAttunement: 0,
         attunement: 0,
         locked: Phaser.Math.RND.frac() > 0.8,
         attributes,
@@ -151,14 +163,12 @@ export class VesselController extends SceneController {
     sprite.glass = scene.add.sprite(0, 0, 'vessel_glass');
     sprite.blur = scene.add.sprite(0, 0, this.textureAtlas.key);
     sprite.primary = scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.glow = scene.add.sprite(0, 0, 'vessel_glow');
     sprite.lock = scene.add.sprite(0, -3, 'lock');
 
     sprite.add(sprite.glassBlur);
     sprite.add(sprite.glass);
     sprite.add(sprite.blur);
     sprite.add(sprite.primary);
-    sprite.add(sprite.glow);
     sprite.add(sprite.lock);
 
     sprite.setSize(sprite.primary.width, sprite.primary.height);
@@ -181,6 +191,5 @@ class Vessel extends Phaser.GameObjects.Container {
   glass: Phaser.GameObjects.Image;
   blur: Phaser.GameObjects.Image;
   primary: Phaser.GameObjects.Image;
-  glow: Phaser.GameObjects.Image;
   lock: Phaser.GameObjects.Image;
 }
