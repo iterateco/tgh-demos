@@ -37,13 +37,13 @@ export class VesselField3D extends BaseScene {
 
   preload() {
     super.preload();
-    this.load.image('sky', 'sky.png');
-    this.load.image('stars_1', 'stars_1.png');
-    this.load.image('stars_2', 'stars_2.png');
-    this.load.image('clouds_1', 'clouds_1.png');
-    this.load.image('clouds_2', 'clouds_2.png');
-    this.load.image('vessel', 'heart.png');
-    this.load.image('vessel_overlay', 'heart_overlay.png');
+    this.load.image('sky', 'textures/sky.png');
+    this.load.image('stars_1', 'textures/stars_1.png');
+    this.load.image('stars_2', 'textures/stars_2.png');
+    this.load.image('clouds_1', 'textures/clouds_1.png');
+    this.load.image('clouds_2', 'textures/clouds_2.png');
+    this.load.image('vessel', 'textures/heart.png');
+    this.load.image('vessel_overlay', 'textures/heart_overlay.png');
   }
 
   create() {

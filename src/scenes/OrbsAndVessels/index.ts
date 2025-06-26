@@ -40,20 +40,20 @@ export class OrbsAndVessels extends BaseScene {
 
   preload() {
     super.preload();
-    this.load.image('sky', 'sky.png');
-    this.load.image('stars_1', 'stars_1.png');
-    this.load.image('stars_2', 'stars_2.png');
-    this.load.image('clouds_1', 'clouds_1.png');
-    this.load.image('clouds_2', 'clouds_2.png');
-    this.load.image('vessel', 'heart_2.png');
-    this.load.image('vessel_blur', 'heart_1_blur.png');
-    this.load.image('vessel_glass', 'heart_1_glass.png');
-    this.load.image('vessel_glass_blur', 'heart_1_glass_blur.png');
-    this.load.image('vessel_overlay', 'heart_1_overlay.png');
-    this.load.image('lock', 'lock_1.png');
-    this.load.image('orb_cloud', 'orb_1_cloud.png');
-    this.load.image('orb_burst', 'orb_1_burst.png');
-    this.load.image('orb_blur', 'orb_1_blur.png');
+    this.load.image('sky', 'textures/sky.png');
+    this.load.image('stars_1', 'textures/stars_1.png');
+    this.load.image('stars_2', 'textures/stars_2.png');
+    this.load.image('clouds_1', 'textures/clouds_1.png');
+    this.load.image('clouds_2', 'textures/clouds_2.png');
+    this.load.image('vessel', 'textures/heart_2.png');
+    this.load.image('vessel_blur', 'textures/heart_1_blur.png');
+    this.load.image('vessel_glass', 'textures/heart_1_glass.png');
+    this.load.image('vessel_glass_blur', 'textures/heart_1_glass_blur.png');
+    this.load.image('vessel_overlay', 'textures/heart_1_overlay.png');
+    this.load.image('lock', 'textures/lock_1.png');
+    this.load.image('orb_cloud', 'textures/orb_1_cloud.png');
+    this.load.image('orb_burst', 'textures/orb_1_burst.png');
+    this.load.image('orb_blur', 'textures/orb_1_blur.png');
   }
 
   create() {
