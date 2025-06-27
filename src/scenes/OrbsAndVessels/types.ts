@@ -38,6 +38,7 @@ export interface FieldEntity {
 export interface OrbEntity extends FieldEntity {
   seed: number
   transitionFactor: number
+  prevOffset: Phaser.Math.Vector2
 }
 
 export interface VesselEntity extends FieldEntity {

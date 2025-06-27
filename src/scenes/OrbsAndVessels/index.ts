@@ -2,8 +2,8 @@ import * as Phaser from 'phaser';
 import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
 import { OrbController } from './OrbController';
-import OrbFX from './OrbFX';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
+import TrailFX from './TrailFX';
 import { FieldEntity, ORB_VARIANTS, OrbEntity, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
@@ -58,7 +58,7 @@ export class OrbsAndVessels extends BaseScene {
 
   create() {
     const renderer = this.sys.renderer as Phaser.Renderer.WebGL.WebGLRenderer;
-    renderer.pipelines.addPostPipeline('orb', OrbFX);
+    renderer.pipelines.addPostPipeline('trail', TrailFX);
 
     this.vesselController = new VesselController(this);
     this.orbController = new OrbController(this);
