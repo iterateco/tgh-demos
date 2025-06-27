@@ -60,7 +60,7 @@ export class OrbController extends SceneController {
   }
 
   updateEntity(entity: OrbEntity, time: number, _delta: number) {
-    const t = (time + entity.seed * 9999) * 0.0004;
+    const t = (time + entity.seed * 9999) * 0.0006;
     const { x, y, midPoint, scale } = MOVE_CONFIG;
     const ppos = new Phaser.Math.Vector2(
       harms(x.freq, x.amp, x.phase, t),
@@ -107,6 +107,11 @@ export class OrbController extends SceneController {
       .setVisible(true)
       .setActive(true);
 
+    sprite.trail
+      .setParticleTint(color.color)
+      .setAlpha(alpha)
+      .setDepth(depth - 1);
+
     // const fx = sprite.getPostPipeline('trail') as TrailFX;
     // const vel = entity.offset.clone().subtract(entity.prevOffset);
     // fx.setVelocity(vel.x, vel.y);
@@ -114,12 +119,8 @@ export class OrbController extends SceneController {
     sprite.entity = entity;
   }
 
-  orbCounter = 0;
-
   private initSprite(sprite: Orb) {
     const { scene } = this;
-
-    this.orbCounter++;
 
     sprite.nebula = scene.add.image(0, 0, 'nebula');
     sprite.add(sprite.nebula);
@@ -130,6 +131,17 @@ export class OrbController extends SceneController {
     sprite.setSize(sprite.burst.width, sprite.burst.height);
     sprite.setScrollFactor(0);
     sprite.setInteractive();
+
+    sprite.trail = scene.add.particles(0, 0, 'nebula', {
+      speed: 10,
+      lifespan: 500,
+      scale: { start: 0.5, end: 0 },
+      alpha: { start: 0.25, end: 0 },
+      frequency: 50,
+      maxAliveParticles: 10,
+      follow: sprite, // <- Attach it to the sprite!
+    });
+    sprite.trail.setScrollFactor(0);
 
     // sprite.setPostPipeline('trail');
     // sprite.postFX.addBloom(0xffffff, 4, 2, 1, 3);
@@ -142,6 +154,7 @@ class Orb extends Phaser.GameObjects.Container {
   blur: Phaser.GameObjects.Image;
   nebula: Phaser.GameObjects.Image;
   burst: Phaser.GameObjects.Image;
+  trail: Phaser.GameObjects.Particles.ParticleEmitter;
 }
 
 const NEBULA_SHADER = `
