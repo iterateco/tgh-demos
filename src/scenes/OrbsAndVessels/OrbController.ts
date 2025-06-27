@@ -25,9 +25,12 @@ export class OrbController extends SceneController {
   sprites!: Phaser.GameObjects.Group;
 
   textureAtlas = new TextureAtlas(this.scene, 'orb_atlas', 250, {
-    primary: ORB_VARIANTS.length,
     blur: ORB_VARIANTS.length
   });
+
+  baseShader1 = new Phaser.Display.BaseShader('orb_shader_1', ORB_SHADER_1);
+  baseShader2 = new Phaser.Display.BaseShader('orb_shader_2', ORB_SHADER_2);
+  baseCloudShader = new Phaser.Display.BaseShader('cloud_shader', CLOUD_SHADER);
 
   constructor(scene: Phaser.Scene) {
     super(scene);
@@ -57,7 +60,7 @@ export class OrbController extends SceneController {
   }
 
   updateEntity(entity: OrbEntity, time: number, _delta: number) {
-    const t = (time + entity.seed * 9999) * 0.0005;
+    const t = (time + entity.seed * 9999) * 0.00033;
     const { x, y, midPoint, scale } = MOVE_CONFIG;
     const ppos = new Phaser.Math.Vector2(
       harms(x.freq, x.amp, x.phase, t),
@@ -90,18 +93,16 @@ export class OrbController extends SceneController {
 
     this.prepareTextureAtlas(variant);
 
-    const primaryAlpha = Math.pow(alpha, 2.5);
-
     sprite.blur
       .setFrame(this.textureAtlas.getFrameName('blur', variant))
-      .setAlpha(blur * Math.pow(alpha, .5));
+      .setAlpha(blur * (Math.pow(alpha, .5)));
+
+    sprite.cloud
+      .setAlpha(alpha)
 
     sprite.primary
-      .setFrame(this.textureAtlas.getFrameName('primary', variant))
-      .setAlpha(primaryAlpha)
-      .setRotation(this.orbRotation);
-
-    sprite.burst.setAlpha(primaryAlpha);
+      .setAlpha(Math.pow(alpha, 2.5))
+    //.setRotation(this.orbRotation);
 
     sprite
       .setPosition(x, y)
@@ -113,22 +114,46 @@ export class OrbController extends SceneController {
     sprite.entity = entity;
   }
 
+  orbCounter = 0;
+
   private initSprite(sprite: Orb) {
     const { scene } = this;
 
-    sprite.blur = scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.primary = scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.burst = scene.add.sprite(0, 0, 'orb_burst').setScale(1.15);
+    this.orbCounter++;
 
+    sprite.blur = scene.add.sprite(0, 0, this.textureAtlas.key);
     sprite.add(sprite.blur);
+
+
+    const cloudShaderKey = 'cloudShader' + this.orbCounter;
+    const cloudShader = scene.add.shader(this.baseCloudShader, 0, 0, 512, 512);
+    cloudShader.setRenderToTexture(cloudShaderKey)
+    sprite.cloud = scene.add.image(0, 0, cloudShaderKey);
+    sprite.add(sprite.cloud);
+
+
+    const shader1Key = `orb_main_${this.orbCounter}`;
+    const shader2Key = `orb_output_${this.orbCounter}`;
+
+    const shader1 = scene.add.shader(this.baseShader1, 0, 0, 256, 256);
+    shader1.setRenderToTexture(shader1Key);
+
+    const shader2 = scene.add.shader(this.baseShader2, 0, 0, 256, 256);
+    shader2.setRenderToTexture(shader2Key);
+
+    shader1.setSampler2D('iChannel0', shader2Key);
+    shader2.setSampler2D('iChannel0', shader1Key);
+
+    sprite.primaryShader = shader2;
+    sprite.primary = scene.add.image(0, 0, shader2Key);
     sprite.add(sprite.primary);
-    sprite.add(sprite.burst);
 
     sprite.setSize(sprite.primary.width, sprite.primary.height);
     sprite.setScrollFactor(0);
     sprite.setInteractive();
 
-    sprite.postFX.addBloom(0xffffff, 4, 2, 1, 3);
+    //sprite.setPostPipeline('motionBlur');
+    //sprite.postFX.addBloom(0xffffff, 4, 2, 1, 3);
   }
 
   private prepareTextureAtlas(variant: number) {
@@ -141,11 +166,484 @@ export class OrbController extends SceneController {
 }
 
 class Orb extends Phaser.GameObjects.Container {
+  id: number;
   entity: FieldEntity;
   blur: Phaser.GameObjects.Image;
   primary: Phaser.GameObjects.Image;
-  burst: Phaser.GameObjects.Image;
+  primaryShader: Phaser.GameObjects.Shader;
 }
+
+const ORB_SHADER_1 = `
+    precision mediump float;
+
+    uniform float time;
+    uniform vec2 resolution;
+    uniform sampler2D iChannel0;
+
+    varying vec2 fragCoord;
+
+    #define iTime time
+    #define iResolution resolution
+
+    vec4 texture(sampler2D s, vec2 c) { return texture2D(s,c); }
+    vec4 texture(sampler2D s, vec2 c, float b) { return texture2D(s,c,b); }
+    vec4 texture(samplerCube s, vec3 c ) { return textureCube(s,c); }
+    vec4 texture(samplerCube s, vec3 c, float b) { return textureCube(s,c,b); }
+
+
+    #define twopi 6.28319
+    // Please be careful, setting complexity > 1 may crash your browser!
+    // 1: for mac computers
+    // 2: for computers with normal graphic card
+    // 3: for computers with good graphic cards
+    // 4: for gaming computers
+    #define complexity 1
+
+    // General particles constants
+    #if complexity == 1
+    const int nb_particles = 0;                                  // Number of particles on the screen at the same time. Be CAREFUL with big numbers of particles, 1000 is already a lot!
+    #elif complexity == 2
+    const int nb_particles = 160;
+    #elif complexity == 3
+    const int nb_particles = 280;
+    #elif complexity == 4
+    const int nb_particles = 500;
+    #endif
+    const vec2 gen_scale = vec2(0.60, 0.45);                      // To scale the particle positions, not the particles themselves
+    const vec2 middlepoint = vec2(0.5, 0.5);                    // Offset of the particles
+
+    // Particle movement constants
+    const vec2 gravitation = vec2(-0., -4.5);                     // Gravitation vector
+    const vec3 main_x_freq = vec3(0.4, 0.66, 0.78);               // 3 frequences (in Hz) of the harmonics of horizontal position of the main particle
+    const vec3 main_x_amp = vec3(0.8, 0.24, 0.18);                // 3 amplitudes of the harmonics of horizontal position of the main particle
+    const vec3 main_x_phase = vec3(0., 45., 55.);                 // 3 phases (in degrees) of the harmonics of horizontal position of the main particle
+    const vec3 main_y_freq = vec3(0.415, 0.61, 0.82);             // 3 frequences (in Hz) of the harmonics of vertical position of the main particle
+    const vec3 main_y_amp = vec3(0.72, 0.28, 0.15);               // 3 amplitudes of the harmonics of vertical position of the main particle
+    const vec3 main_y_phase = vec3(90., 120., 10.);               // 3 phases (in degrees) of the harmonics of vertical position of the main particle
+    const float part_timefact_min = 6.;                           // Specifies the minimum how many times the particle moves slower than the main particle when it's "launched"
+    const float part_timefact_max = 20.;                          // Specifies the maximum how many times the particle moves slower than the main particle when it's "launched"
+    const vec2 part_max_mov = vec2(0.28, 0.28);                   // Maxumum movement out of the trajectory in display units / s
+
+    // Particle time constants
+    const float time_factor = 0.75;                               // Time in s factor, <1. for slow motion, >1. for faster movement
+    const float start_time = 2.5;                                 // Time in s needed until all the nb_particles are "launched"
+    const float grow_time_factor = 0.15;                          // Time in s particles need to reach their max intensity after they are "launched"
+    #if complexity == 1
+    const float part_life_time_min = 0.9;                         // Minimum life time in s of a particle
+    const float part_life_time_max = 1.9;                         // Maximum life time in s of a particle
+    #elif complexity == 2
+    const float part_life_time_min = 1.0;
+    const float part_life_time_max = 2.5;
+    #elif complexity == 3
+    const float part_life_time_min = 1.1;
+    const float part_life_time_max = 3.2;
+    #elif complexity == 4
+    const float part_life_time_min = 1.2;
+    const float part_life_time_max = 4.0;
+    #endif
+
+    // Particle intensity constants
+    const float part_int_div = 40000.;                            // Divisor of the particle intensity. Tweak this value to make the particles more or less bright
+    const float part_int_factor_min = 0.1;                        // Minimum initial intensity of a particle
+    const float part_int_factor_max = 3.2;                        // Maximum initial intensity of a particle
+    const float part_spark_min_int = 0.25;                        // Minimum sparkling intensity (factor of initial intensity) of a particle
+    const float part_spark_max_int = 0.88;                        // Minimum sparkling intensity (factor of initial intensity) of a particle
+    const float part_spark_min_freq = 2.5;                        // Minimum sparkling frequence in Hz of a particle
+    const float part_spark_max_freq = 6.0;                        // Maximum sparkling frequence in Hz of a particle
+    const float part_spark_time_freq_fact = 0.35;                 // Sparkling frequency factor at the end of the life of the particle
+    const float mp_int = 12.;                                     // Initial intensity of the main particle
+    const float dist_factor = 3.;                                 // Distance factor applied before calculating the intensity
+    const float ppow = 2.3;                                      // Exponent of the intensity in function of the distance
+
+    // Particle color constants
+    const float part_min_hue = -0.13;                             // Minimum particle hue shift (spectrum width = 1.)
+    const float part_max_hue = 0.13;                              // Maximum particle hue shift (spectrum width = 1.)
+    const float part_min_saturation = 0.5;                        // Minimum particle saturation (0. to 1.)
+    const float part_max_saturation = 0.9;                        // Maximum particle saturation (0. to 1.)
+    const float hue_time_factor = 0.035;                          // Time-based hue shift
+    const float mp_hue = 0.5;                                     // Hue (shift) of the main particle
+    const float mp_saturation = 0.18;                             // Saturation (delta) of the main particle
+
+    // Particle star constants
+    const vec2 part_starhv_dfac = vec2(9., 0.32);                 // x-y transformation vector of the distance to get the horizontal and vertical star branches
+    const float part_starhv_ifac = 0.25;                          // Intensity factor of the horizontal and vertical star branches
+    const vec2 part_stardiag_dfac = vec2(13., 0.61);              // x-y transformation vector of the distance to get the diagonal star branches
+    const float part_stardiag_ifac = 0.19;                        // Intensity factor of the diagonal star branches
+
+    const float mb_factor = 0.8;                                 // Mix factor for the multipass motion blur factor
+
+    // Variables
+    float pst;
+    float plt;
+    float runnr;
+    float time2;
+    float time3;
+    float time4;
+
+    // From https://www.shadertoy.com/view/ldtGDn
+    vec3 hsv2rgb (vec3 hsv) { // from HSV to RGB color vector
+        hsv.yz = clamp (hsv.yz, 0.0, 1.0);
+        return hsv.z*(0.63*hsv.y*(cos(twopi*(hsv.x + vec3(0.0, 2.0/3.0, 1.0/3.0))) - 1.0) + 1.0);
+    }
+
+    // Simple "random" function
+    float random(float co)
+    {
+        return fract(sin(co*12.989) * 43758.545);
+    }
+
+    // Gets the time at which a paticle is starting its "life"
+    float getParticleStartTime(int partnr)
+    {
+        return start_time*random(float(partnr*2));
+    }
+
+    // Harmonic calculation, base is a vec4
+    float harms(vec3 freq, vec3 amp, vec3 phase, float time)
+    {
+       float val = 0.;
+       for (int h=0; h<3; h++)
+          val+= amp[h]*cos(time*freq[h]*twopi + phase[h]/360.*twopi);
+       return (1. + val)/2.;
+    }
+
+    // Gets the position of a particle in function of its number and the time
+    vec2 getParticlePosition(int partnr)
+    {
+       // Particle "local" time, when a particle is "reborn" its time starts with 0.0
+       float part_timefact = mix(part_timefact_min, part_timefact_max, random(float(partnr*2 + 94) + runnr*1.5));
+       float ptime = (runnr*plt + pst)*(-1./part_timefact + 1.) + time2/part_timefact;
+       vec2 ppos = vec2(harms(main_x_freq, main_x_amp, main_x_phase, ptime), harms(main_y_freq, main_y_amp, main_y_phase, ptime)) + middlepoint;
+
+       // Particles randomly get away the main particle's orbit, in a linear fashion
+       vec2 delta_pos = part_max_mov*(vec2(random(float(partnr*3-23) + runnr*4.), random(float(partnr*7+632) - runnr*2.5))-0.5)*(time3 - pst);
+
+       // Calculation of the effect of the gravitation on the particles
+       vec2 grav_pos = gravitation*pow(time4, 2.)/250.;
+       return (ppos + delta_pos + grav_pos)*gen_scale;
+    }
+
+    // Gets the position of the main particle in function of the time
+    vec2 getParticlePosition_mp()
+    {
+       vec2 ppos = vec2(harms(main_x_freq, main_x_amp, main_x_phase, time2), harms(main_y_freq, main_y_amp, main_y_phase, time2)) + middlepoint;
+       return gen_scale*ppos;
+    }
+
+    // Gets the rgb color of a particle in function of its intensity and number
+    vec3 getParticleColor(int partnr, float pint)
+    {
+       float hue;
+       float saturation;
+
+       saturation = mix(part_min_saturation, part_max_saturation, random(float(partnr*6 + 44) + runnr*3.3))*0.45/pint;
+       hue = mix(part_min_hue, part_max_hue, random(float(partnr + 124) + runnr*1.5)) + hue_time_factor*time2;
+
+       return hsv2rgb(vec3(hue, saturation, pint));
+    }
+
+    // Gets the rgb color the main particle in function of its intensity
+    vec3 getParticleColor_mp( float pint)
+    {
+       float hue;
+       float saturation;
+
+       saturation = 0.75/pow(pint, 2.5) + mp_saturation;
+       hue = hue_time_factor*time2 + mp_hue;
+
+       return hsv2rgb(vec3(hue, saturation, pint));
+    }
+
+    // Main function to draw particles, outputs the rgb color.
+    vec3 drawParticles(vec2 uv, float timedelta)
+    {
+        // Here the time is "stetched" with the time factor, so that you can make a slow motion effect for example
+        time2 = time_factor*(iTime + timedelta);
+        vec3 pcol = vec3(0.);
+        // Main particles loop
+        for (int i=1; i<nb_particles; i++)
+        {
+            pst = getParticleStartTime(i); // Particle start time
+            plt = mix(part_life_time_min, part_life_time_max, random(float(i*2-35))); // Particle life time
+            time4 = mod(time2 - pst, plt);
+            time3 = time4 + pst;
+           // if (time2>pst) // Doesn't draw the paricle at the start
+            //{
+               runnr = floor((time2 - pst)/plt);  // Number of the "life" of a particle
+               vec2 ppos = getParticlePosition(i);
+               float dist = distance(uv, ppos);
+               //if (dist<0.05) // When the current point is further than a certain distance, its impact is neglectable
+               //{
+                  // Draws the eight-branched star
+                  // Horizontal and vertical branches
+                  vec2 uvppos = uv - ppos;
+                  float distv = distance(uvppos*part_starhv_dfac + ppos, ppos);
+                  float disth = distance(uvppos*part_starhv_dfac.yx + ppos, ppos);
+                  // Diagonal branches
+                  vec2 uvpposd = 0.707*vec2(dot(uvppos, vec2(1., 1.)), dot(uvppos, vec2(1., -1.)));
+                  float distd1 = distance(uvpposd*part_stardiag_dfac + ppos, ppos);
+                  float distd2 = distance(uvpposd*part_stardiag_dfac.yx + ppos, ppos);
+                  // Initial intensity (random)
+                  float pint0 = mix(part_int_factor_min, part_int_factor_max, random(runnr*4. + float(i-55)));
+                  // Middle point intensity star inensity
+                  float pint1 = 1./(dist*dist_factor + 0.015) + part_starhv_ifac/(disth*dist_factor + 0.01) + part_starhv_ifac/(distv*dist_factor + 0.01) + part_stardiag_ifac/(distd1*dist_factor + 0.01) + part_stardiag_ifac/(distd2*dist_factor + 0.01);
+                  // One neglects the intentity smaller than a certain threshold
+                  //if (pint0*pint1>16.)
+                  //{
+                     // Intensity curve and fading over time
+                     float pint = pint0*(pow(pint1, ppow)/part_int_div)*(-time4/plt + 1.);
+
+                     // Initial growing of the paricle's intensity
+                     pint*= smoothstep(0., grow_time_factor*plt, time4);
+                     // "Sparkling" of the particles
+                     float sparkfreq = clamp(part_spark_time_freq_fact*time4, 0., 1.)*part_spark_min_freq + random(float(i*5 + 72) - runnr*1.8)*(part_spark_max_freq - part_spark_min_freq);
+                     pint*= mix(part_spark_min_int, part_spark_max_int, random(float(i*7 - 621) - runnr*12.))*sin(sparkfreq*twopi*time2)/2. + 1.;
+
+                     // Adds the current intensity to the global intensity
+                     pcol+= getParticleColor(i, pint);
+                  //}
+               //}
+            //}
+        }
+
+        // Main particle
+        // vec2 ppos = getParticlePosition_mp();
+        vec2 ppos = vec2(0.5, 0.5);
+        float dist = distance(uv, ppos) * 0.35;
+
+        // Draws the eight-branched star
+        // Horizontal and vertical branches
+        vec2 uvppos = uv - ppos;
+        float distv = distance(uvppos*part_starhv_dfac + ppos, ppos);
+        float disth = distance(uvppos*part_starhv_dfac.yx + ppos, ppos);
+        // Diagonal branches
+        vec2 uvpposd = 0.7071*vec2(dot(uvppos, vec2(1., 1.)), dot(uvppos, vec2(1., -1.)));
+        float distd1 = distance(uvpposd*part_stardiag_dfac + ppos, ppos);
+        float distd2 = distance(uvpposd*part_stardiag_dfac.yx + ppos, ppos);
+        // Middle point intensity star inensity
+        float pint1 = 1./(dist*dist_factor + 0.015) + part_starhv_ifac/(disth*dist_factor + 0.01) + part_starhv_ifac/(distv*dist_factor + 0.01) + part_stardiag_ifac/(distd1*dist_factor + 0.01) + part_stardiag_ifac/(distd2*dist_factor + 0.01);
+
+        if (part_int_factor_max*pint1>6.)
+        {
+            float pint = part_int_factor_max*(pow(pint1, ppow)/part_int_div)*mp_int;
+            pcol+= getParticleColor_mp(pint);
+        }
+
+        return pcol;
+    }
+
+    void mainImage(out vec4 fragColor, in vec2 fragCoord)
+    {
+        vec2 uv = fragCoord.xy / iResolution.xx;
+
+        // Multipass motion blur
+        vec2 uv2 = fragCoord.xy / iResolution.xy;
+        vec3 pcolor = texture(iChannel0,uv2).rgb*mb_factor;
+
+        // Background gradient
+        //vec3 pcolor = vec3(0., (0.6 - uv.y)/10., (1. - uv.y)/9.);
+        //vec3 pcolor = texture(iChannel0,uv).rgb*0.4;
+
+        pcolor += drawParticles(uv,0.)*0.9;
+
+        // We're done!
+        fragColor = vec4(pcolor, 0.);
+    }
+
+    void main(void)
+    {
+        mainImage(gl_FragColor, fragCoord.xy);
+    }
+`;
+
+const ORB_SHADER_2 = `
+  precision mediump float;
+
+    uniform float time;
+    uniform vec2 resolution;
+    uniform sampler2D iChannel0;
+
+    varying vec2 fragCoord;
+
+    #define iTime time
+    #define iResolution resolution
+
+    vec4 texture(sampler2D s, vec2 c) { return texture2D(s,c); }
+    vec4 texture(sampler2D s, vec2 c, float b) { return texture2D(s,c,b); }
+
+    void mainImage( out vec4 fragColor, in vec2 fragCoord )
+    {
+        vec2 uv = fragCoord.xy / resolution.xy;
+        fragColor = texture(iChannel0,uv);
+    }
+
+    void main(void)
+    {
+        mainImage(gl_FragColor, fragCoord.xy);
+    }
+`;
+
+// const CLOUD_SHADER = `
+// precision mediump float;
+
+// uniform float time;
+// uniform vec2 resolution;
+
+// #define iTime time
+// #define iResolution resolution
+
+// float rand(vec2 co){
+//     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+// }
+
+// float hermite(float t)
+// {
+//   return t * t * (3.0 - 2.0 * t);
+// }
+
+// float noise(vec2 co, float frequency)
+// {
+//   vec2 v = vec2(co.x * frequency, co.y * frequency);
+
+//   float ix1 = floor(v.x);
+//   float iy1 = floor(v.y);
+//   float ix2 = floor(v.x + 1.0);
+//   float iy2 = floor(v.y + 1.0);
+
+//   float fx = hermite(fract(v.x));
+//   float fy = hermite(fract(v.y));
+
+//   float fade1 = mix(rand(vec2(ix1, iy1)), rand(vec2(ix2, iy1)), fx);
+//   float fade2 = mix(rand(vec2(ix1, iy2)), rand(vec2(ix2, iy2)), fx);
+
+//   return mix(fade1, fade2, fy);
+// }
+
+// float pnoise(vec2 co, float freq, float persistence)
+// {
+//   float value = 0.0;
+//   float ampl = 1.0;
+//   float sum = 0.0;
+//   for(int i=0 ; i<5 ; i++)
+//   {
+//     sum += ampl;
+//     value += noise(co, freq) * ampl;
+//     freq *= 2.0;
+//     ampl *= persistence;
+//   }
+//   return value / sum;
+// }
+
+// void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+//     vec2 uv = fragCoord.xy / iResolution.xy;
+//     vec2 center = vec2(0.5, 0.5);
+
+//     vec2 pos = (uv - center);
+//     pos.x *= iResolution.x / iResolution.y;
+
+//     float dist = length(pos);
+//     float maxRadius = 0.5;
+//     float fade = smoothstep(maxRadius, maxRadius - 0.1, dist);
+
+//     vec2 direction = normalize(pos); // outward direction from center
+
+//     // Create radial noise movement
+//     vec2 noiseUV = fragCoord.xy / iResolution.x;
+//     noiseUV -= direction * iTime * 0.1; // radiate outward
+
+//     vec4 brighterColor = vec4(1.0, 0.65, 0.1, 0.25);
+//     vec4 darkerColor = vec4(1.0, 0.0, 0.15, 0.0625);
+//     vec4 middleColor = mix(brighterColor, darkerColor, 0.5);
+
+//     float noiseTexel = pnoise(noiseUV, 10.0, 0.01);
+
+//     float radialGradient = 1.0 - dist / maxRadius;
+//     float gradientStep = 0.2;
+
+//     float firstStep = smoothstep(0.0, noiseTexel, radialGradient);
+//     float darkerColorStep = smoothstep(0.0, noiseTexel, radialGradient - gradientStep);
+//     float darkerColorPath = firstStep - darkerColorStep;
+//     vec4 color = mix(brighterColor, darkerColor, darkerColorPath);
+
+//     float middleColorStep = smoothstep(0.0, noiseTexel, radialGradient - 0.4);
+//     color = mix(color, middleColor, darkerColorStep - middleColorStep);
+//     color = mix(vec4(0.0), color, firstStep);
+
+//     color.a *= fade;
+
+//     fragColor = color;
+// }
+
+// void main(void)
+// {
+//     mainImage(gl_FragColor, gl_FragCoord.xy);
+// }
+// `;
+
+const CLOUD_SHADER = `
+precision mediump float;
+
+uniform float time;
+uniform vec2 resolution;
+uniform vec3 uColor;
+
+#define iTime time
+#define iResolution resolution
+
+float snoise(vec3 uv, float res)
+{
+	const vec3 s = vec3(1e0, 1e2, 1e3);
+
+	uv *= res;
+
+	vec3 uv0 = floor(mod(uv, res))*s;
+	vec3 uv1 = floor(mod(uv+vec3(1.), res))*s;
+
+	vec3 f = fract(uv); f = f*f*(3.0-2.0*f);
+
+	vec4 v = vec4(uv0.x+uv0.y+uv0.z, uv1.x+uv0.y+uv0.z,
+		      	  uv0.x+uv1.y+uv0.z, uv1.x+uv1.y+uv0.z);
+
+	vec4 r = fract(sin(v*1e-1)*1e3);
+	float r0 = mix(mix(r.x, r.y, f.x), mix(r.z, r.w, f.x), f.y);
+
+	r = fract(sin((v + uv1.z - uv0.z)*1e-1)*1e3);
+	float r1 = mix(mix(r.x, r.y, f.x), mix(r.z, r.w, f.x), f.y);
+
+	return mix(r0, r1, f.z)*2.-1.;
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    vec2 p = (-.5 + fragCoord.xy / iResolution.xy) * 1.5;
+    p.x *= iResolution.x / iResolution.y;
+
+    float color = 3.0 - (3.0 * length(2.0 * p));
+
+    vec3 coord = vec3(atan(p.x, p.y) / 6.2832 + 0.5, length(p) * 0.4, 0.5);
+
+    float detail = 8.0; // lower for blur
+    float otherThing = 2.0;
+
+    for (int i = 1; i <= 3; i++) {
+        float power = pow(2.0, float(i));
+        color += (otherThing / power) * snoise(coord + vec3(0.0, -iTime * 0.1, iTime * 0.01), power * detail);
+    }
+
+    vec3 finalColor = vec3(0.1, 0.1, 0.24) * pow(max(color, 0.0), 1.2); // gamma-adjusted color
+
+    vec2 p2 = (-.5 + fragCoord.xy / iResolution.xy);
+    float dist = length(p2); // 0.0 at center, ~0.7 at corners
+    float alpha = smoothstep(0.5, 0.0, dist);
+
+    fragColor = vec4(finalColor * alpha, 0.0);
+}
+
+void main(void)
+{
+    mainImage(gl_FragColor, gl_FragCoord.xy);
+}
+`
 
 function harms(freq: number[], amp: number[], phase: number[], time: number) {
   const twopi = 6.28319;
