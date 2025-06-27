@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { SceneController } from './SceneController';
-import { TextureAtlas } from './TextureAtlas';
 import { FieldEntity, ORB_VARIANTS, OrbEntity } from './types';
 
 const MOVE_CONFIG = {
@@ -24,16 +23,15 @@ export class OrbController extends SceneController {
 
   sprites!: Phaser.GameObjects.Group;
 
-  textureAtlas = new TextureAtlas(this.scene, 'orb_atlas', 250, {
-    blur: ORB_VARIANTS.length
-  });
-
   baseShader1 = new Phaser.Display.BaseShader('orb_shader_1', ORB_SHADER_1);
   baseShader2 = new Phaser.Display.BaseShader('orb_shader_2', ORB_SHADER_2);
-  baseCloudShader = new Phaser.Display.BaseShader('cloud_shader', CLOUD_SHADER);
 
   constructor(scene: Phaser.Scene) {
     super(scene);
+
+    const baseNebulaShader = new Phaser.Display.BaseShader('nebula_shader', NEBULA_SHADER);
+    const nebulaShader = scene.add.shader(baseNebulaShader, 0, 0, 512, 512);
+    nebulaShader.setRenderToTexture('nebula');
 
     this.sprites = scene.add.group({
       classType: Orb,
@@ -60,7 +58,7 @@ export class OrbController extends SceneController {
   }
 
   updateEntity(entity: OrbEntity, time: number, _delta: number) {
-    const t = (time + entity.seed * 9999) * 0.00033;
+    const t = (time + entity.seed * 9999) * 0.0004;
     const { x, y, midPoint, scale } = MOVE_CONFIG;
     const ppos = new Phaser.Math.Vector2(
       harms(x.freq, x.amp, x.phase, t),
@@ -79,29 +77,24 @@ export class OrbController extends SceneController {
       y: number,
       scale: number,
       alpha: number,
-      blur: number,
       depth: number
     }
   ) {
-    const { alpha, blur, depth } = params;
+    const { alpha, depth } = params;
     const entity = params.entity as OrbEntity;
     const { variant, offset } = entity;
+    const { color } = ORB_VARIANTS[variant];
     const x = params.x + offset.x * params.scale;
     const y = params.y + offset.y * params.scale;
     const scale = params.scale * entity.transitionFactor;
     const sprite = (this.sprites.get() as Orb);
 
-    this.prepareTextureAtlas(variant);
-
-    sprite.blur
-      .setFrame(this.textureAtlas.getFrameName('blur', variant))
-      .setAlpha(blur * (Math.pow(alpha, .5)));
-
-    sprite.cloud
-      .setAlpha(alpha)
+    sprite.nebula
+      .setTint(color.color)
+      .setAlpha(alpha);
 
     sprite.primary
-      .setAlpha(Math.pow(alpha, 2.5))
+      .setAlpha(Math.pow(alpha, 2.5));
     //.setRotation(this.orbRotation);
 
     sprite
@@ -121,16 +114,8 @@ export class OrbController extends SceneController {
 
     this.orbCounter++;
 
-    sprite.blur = scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.add(sprite.blur);
-
-
-    const cloudShaderKey = 'cloudShader' + this.orbCounter;
-    const cloudShader = scene.add.shader(this.baseCloudShader, 0, 0, 512, 512);
-    cloudShader.setRenderToTexture(cloudShaderKey)
-    sprite.cloud = scene.add.image(0, 0, cloudShaderKey);
-    sprite.add(sprite.cloud);
-
+    sprite.nebula = scene.add.image(0, 0, 'nebula');
+    sprite.add(sprite.nebula);
 
     const shader1Key = `orb_main_${this.orbCounter}`;
     const shader2Key = `orb_output_${this.orbCounter}`;
@@ -155,20 +140,13 @@ export class OrbController extends SceneController {
     //sprite.setPostPipeline('motionBlur');
     //sprite.postFX.addBloom(0xffffff, 4, 2, 1, 3);
   }
-
-  private prepareTextureAtlas(variant: number) {
-    if (this.textureAtlas.hasFrame('primary', variant)) return;
-
-    const { color } = ORB_VARIANTS[variant];
-    this.textureAtlas.drawColorizedFrame('primary', variant, 'orb_cloud', color);
-    this.textureAtlas.drawColorizedFrame('blur', variant, 'orb_blur', color);
-  }
 }
 
 class Orb extends Phaser.GameObjects.Container {
   id: number;
   entity: FieldEntity;
   blur: Phaser.GameObjects.Image;
+  nebula: Phaser.GameObjects.Image;
   primary: Phaser.GameObjects.Image;
   primaryShader: Phaser.GameObjects.Shader;
 }
@@ -580,7 +558,9 @@ const ORB_SHADER_2 = `
 // }
 // `;
 
-const CLOUD_SHADER = `
+const NEBULA_SHADER = `
+// Based on https://www.shadertoy.com/view/lsf3RH
+
 precision mediump float;
 
 uniform float time;
@@ -630,7 +610,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         color += (otherThing / power) * snoise(coord + vec3(0.0, -iTime * 0.1, iTime * 0.01), power * detail);
     }
 
-    vec3 finalColor = vec3(0.1, 0.1, 0.24) * pow(max(color, 0.0), 1.2); // gamma-adjusted color
+    vec3 finalColor = vec3(0.25, 0.25, 0.25) * pow(max(color, 0.0), 1.2); // gamma-adjusted color
 
     vec2 p2 = (-.5 + fragCoord.xy / iResolution.xy);
     float dist = length(p2); // 0.0 at center, ~0.7 at corners
@@ -643,7 +623,7 @@ void main(void)
 {
     mainImage(gl_FragColor, gl_FragCoord.xy);
 }
-`
+`;
 
 function harms(freq: number[], amp: number[], phase: number[], time: number) {
   const twopi = 6.28319;

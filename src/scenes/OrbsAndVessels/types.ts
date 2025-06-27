@@ -15,7 +15,7 @@ export const VESSEL_VARIANTS = new Array(16).fill(0).map((_, i) => {
   const s = 0.6;
   const l = 0.65;
   return {
-    color: Phaser.Display.Color.HSLToColor(h, s, l).color
+    color: Phaser.Display.Color.HSLToColor(h, s, l)
   };
 });
 
@@ -24,7 +24,7 @@ export const ORB_VARIANTS = Object.entries(FEELINGS).map(([name, h]) => {
   const l = 0.5;
   return {
     name,
-    color: Phaser.Display.Color.HSLToColor(h, s, l).color
+    color: Phaser.Display.Color.HSLToColor(h, s, l)
   };
 });
 

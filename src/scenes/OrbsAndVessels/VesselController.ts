@@ -1,16 +1,10 @@
 import Phaser from 'phaser';
 import { SceneController } from './SceneController';
-import { TextureAtlas } from './TextureAtlas';
 import { FEELING_NAMES, FieldEntity, VESSEL_VARIANTS, VesselEntity } from './types';
 
 export class VesselController extends SceneController {
   entities: VesselEntity[] = [];
   sprites!: Phaser.GameObjects.Group;
-
-  textureAtlas = new TextureAtlas(this.scene, 'vessel_atlas', 250, {
-    primary: VESSEL_VARIANTS.length,
-    blur: VESSEL_VARIANTS.length
-  });
 
   attunementScale = 1;
 
@@ -68,9 +62,9 @@ export class VesselController extends SceneController {
     offset.y += vel.y;
 
     const attunementDiff = entity.targetAttunement - entity.attunement;
-    const attunementInc = 0.0005 * delta;
+    const attunementInc = 0.0004 * delta;
 
-    if (attunementDiff) {
+    if (attunementDiff !== 0) {
       if (Math.abs(attunementDiff) < attunementInc) {
         entity.attunement = entity.targetAttunement;
       } else {
@@ -87,13 +81,13 @@ export class VesselController extends SceneController {
       y: number,
       scale: number,
       alpha: number,
-      blur: number,
       depth: number
     }
   ) {
-    const { alpha, blur, depth } = params;
+    const { alpha, depth } = params;
     const entity = params.entity as VesselEntity;
     const { variant, attunement, offset } = entity;
+    const { color } = VESSEL_VARIANTS[variant];
     const sprite = (this.sprites.get() as Vessel);
 
     const x = params.x + offset.x * params.scale;
@@ -102,26 +96,24 @@ export class VesselController extends SceneController {
     const attunementScaleFactor = 1 + this.attunementScale * attunement;
     const scale = params.scale * attunementScaleFactor;
 
-    this.prepareTextureAtlas(variant);
-
-    const primaryAlpha = Math.pow(alpha, 2.5);
-    const blurAlpha = blur * Math.pow(alpha, .5);
-
-    sprite.glass
-      .setAlpha(primaryAlpha * (1 - attunement));
-
-    sprite.glassBlur
-      .setAlpha(blurAlpha);
+    const baseAlpha = Math.pow(alpha, 2.5);
 
     sprite.blur
-      .setFrame(this.textureAtlas.getFrameName('blur', variant))
-      .setAlpha(blurAlpha * attunement);
+      .setTint(color.clone().lighten((0) * 100).color)
+      .setAlpha((1 - alpha) * Math.pow(alpha, .5));
 
-    sprite.primary
-      .setFrame(this.textureAtlas.getFrameName('primary', variant))
-      .setAlpha(primaryAlpha * attunement);
+    sprite.base
+      .setTint(color.color)
+      .setAlpha(baseAlpha * (0.2 + attunement * 0.8));
 
-    sprite.lock.setAlpha(entity.locked ? primaryAlpha : 0);
+    sprite.highlight
+      .setAlpha(baseAlpha);
+
+    sprite.glow
+      .setTint(color.color)
+      .setAlpha(baseAlpha * attunement);
+
+    sprite.icon.setAlpha(entity.locked ? baseAlpha : 0);
 
     sprite
       .setPosition(x, y)
@@ -134,11 +126,19 @@ export class VesselController extends SceneController {
   }
 
   private createVesselEntities() {
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 300; i++) {
       const attributes: { [name: string]: number } = {};
-      for (const attrName of FEELING_NAMES) {
-        attributes[attrName] = Phaser.Math.RND.frac();
+      for (const name of FEELING_NAMES) {
+        attributes[name] = Phaser.Math.RND.frac();
       }
+
+      // const feelingNames = Phaser.Math.RND.shuffle(FEELING_NAMES.slice()).slice(0, 3);
+      // const values = feelingNames.map(() => Phaser.Math.RND.frac());
+      // const normalized = values.map(v => v / values.reduce((sum, val) => sum + val, 0));
+
+      // feelingNames.forEach((name, i) => {
+      //   attributes[name] = normalized[i];
+      // });
 
       this.entities.push({
         type: 'vessel',
@@ -159,37 +159,29 @@ export class VesselController extends SceneController {
   private initSprite(sprite: Vessel) {
     const { scene } = this;
 
-    sprite.glassBlur = scene.add.sprite(0, 0, 'vessel_glass_blur');
-    sprite.glass = scene.add.sprite(0, 0, 'vessel_glass');
-    sprite.blur = scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.primary = scene.add.sprite(0, 0, this.textureAtlas.key);
-    sprite.lock = scene.add.sprite(0, -3, 'lock');
+    sprite.blur = scene.add.image(0, 0, 'vessel_blur');
+    sprite.base = scene.add.image(0, 0, 'vessel_base');
+    sprite.highlight = scene.add.image(0, 0, 'vessel_highlight');
+    sprite.glow = scene.add.image(0, 0, 'vessel_glow');
+    sprite.icon = scene.add.image(0, -3, 'lock');
 
-    sprite.add(sprite.glassBlur);
-    sprite.add(sprite.glass);
     sprite.add(sprite.blur);
-    sprite.add(sprite.primary);
-    sprite.add(sprite.lock);
+    sprite.add(sprite.base);
+    sprite.add(sprite.highlight);
+    sprite.add(sprite.glow);
+    sprite.add(sprite.icon);
 
-    sprite.setSize(sprite.primary.width, sprite.primary.height);
+    sprite.setSize(sprite.base.width, sprite.base.height);
     sprite.setScrollFactor(0);
     sprite.setInteractive();
-  }
-
-  private prepareTextureAtlas(variant: number) {
-    if (this.textureAtlas.hasFrame('primary', variant)) return;
-
-    const { color } = VESSEL_VARIANTS[variant];
-    this.textureAtlas.drawColorizedFrame('primary', variant, 'vessel', color);
-    this.textureAtlas.drawColorizedFrame('blur', variant, 'vessel_blur', color);
   }
 }
 
 class Vessel extends Phaser.GameObjects.Container {
   entity: VesselEntity;
-  glassBlur: Phaser.GameObjects.Image;
-  glass: Phaser.GameObjects.Image;
   blur: Phaser.GameObjects.Image;
-  primary: Phaser.GameObjects.Image;
-  lock: Phaser.GameObjects.Image;
+  base: Phaser.GameObjects.Image;
+  highlight: Phaser.GameObjects.Image;
+  glow: Phaser.GameObjects.Image;
+  icon: Phaser.GameObjects.Image;
 }

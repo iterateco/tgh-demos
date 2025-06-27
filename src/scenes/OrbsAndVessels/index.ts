@@ -46,11 +46,10 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('stars_2', 'textures/stars_2.png');
     this.load.image('clouds_1', 'textures/clouds_1.png');
     this.load.image('clouds_2', 'textures/clouds_2.png');
-    this.load.image('vessel', 'textures/heart_2.png');
-    this.load.image('vessel_blur', 'textures/heart_1_blur.png');
-    this.load.image('vessel_glass', 'textures/heart_1_glass.png');
-    this.load.image('vessel_glass_blur', 'textures/heart_1_glass_blur.png');
-    this.load.image('vessel_overlay', 'textures/heart_1_overlay.png');
+    this.load.image('vessel_blur', 'textures/heart_1_glass_blur.png');
+    this.load.image('vessel_base', 'textures/heart_1_base.png');
+    this.load.image('vessel_highlight', 'textures/heart_1_glass.png');
+    this.load.image('vessel_glow', 'textures/heart_1_glow.png');
     this.load.image('lock', 'textures/lock_1.png');
     this.load.image('orb_cloud', 'textures/orb_1_cloud.png');
     this.load.image('orb_burst', 'textures/orb_1_burst.png');
@@ -63,6 +62,13 @@ export class OrbsAndVessels extends BaseScene {
 
     this.vesselController = new VesselController(this);
     this.orbController = new OrbController(this);
+
+    // this.collectedOrbs = [
+    //   { variant: 1 },
+    //   { variant: 1 },
+    //   { variant: 1 }
+    // ] as any
+    // this.updateVesselAttunements();
 
     this.cameras.main.centerOn(0, 0);
 
@@ -246,25 +252,20 @@ export class OrbsAndVessels extends BaseScene {
             y + r >= -margin && y - r <= height + margin
           ) {
             let alpha = 1;
-            let blur = 0;
 
             if (dzFromCamera < nearFadeStart || dzFromCamera > farFadeEnd) {
               alpha = 0;
-              blur = 1;
             } else if (dzFromCamera < nearFadeEnd) {
               // Near
               const t = (dzFromCamera - nearFadeStart) / (nearFadeEnd - nearFadeStart);
               alpha = Math.pow(t, 2); // ease-in
-              blur = 0;
             } else if (dzFromCamera > farFadeStart) {
               // Far
               const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
               alpha = Math.pow(1 - t, 1.5); // ease-out
-              blur = 1 - Math.pow(1 - t, 3); // ease-out
             } else {
               // Fully visible between nearFadeEnd and farFadeStart
               alpha = 1;
-              blur = 0;
             }
 
             renderedEntities.add(entity);
@@ -275,7 +276,6 @@ export class OrbsAndVessels extends BaseScene {
               y,
               scale: r * .0075,
               alpha,
-              blur,
               depth: 100000 - wz
             });
           }
@@ -310,7 +310,7 @@ export class OrbsAndVessels extends BaseScene {
 
     let text = `FPS: ${this.game.loop.actualFps}`;
     // text += `\nEntities: ${renderItems.length}`;
-    text += `\nActive Orbs: ${this.orbController.sprites.countActive(true)}`
+    text += `\nActive Orbs: ${this.orbController.sprites.countActive(true)}`;
     text += '\nCollected Orbs:';
     this.collectedOrbs.forEach(orb => {
       const variantProps = ORB_VARIANTS[orb.variant];
