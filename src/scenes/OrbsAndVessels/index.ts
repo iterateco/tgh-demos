@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
-import { OrbController } from './OrbController';
+import { Orb, OrbController } from './OrbController';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
 import TrailFX from './TrailFX';
 import { FieldEntity, ORB_VARIANTS, OrbEntity, VesselEntity } from './types';
@@ -70,7 +70,8 @@ export class OrbsAndVessels extends BaseScene {
     // ] as any
     // this.updateVesselAttunements();
 
-    this.cameras.main.centerOn(0, 0);
+    const camera = this.cameras.main;
+    camera.centerOn(0, 0);
 
     this.createBackground();
     this.createEntityField();
@@ -217,7 +218,7 @@ export class OrbsAndVessels extends BaseScene {
       fov: cameraProps.fov,
       getEntity: (seed) => {
         if (seed % 10 === 0) {
-          return this.orbController.createEntity();
+          return this.orbController.createEntity(seed);
         }
         return this.vesselController.entities[seed % this.vesselController.entities.length];
       }
@@ -295,9 +296,12 @@ export class OrbsAndVessels extends BaseScene {
       sprite.setActive(false);
       sprite.setVisible(false);
     }
-    for (const sprite of (this.orbController.sprites.getChildren() as Phaser.GameObjects.Image[])) {
+
+    for (const sprite of (this.orbController.sprites.getChildren() as Orb[])) {
       sprite.setActive(false);
       sprite.setVisible(false);
+      sprite.trail.setActive(false);
+      sprite.trail.setVisible(false);
     }
 
     for (const item of renderItems) {

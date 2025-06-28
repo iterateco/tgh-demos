@@ -30,6 +30,38 @@ export class VesselController extends SceneController {
     });
   }
 
+  private createVesselEntities() {
+    for (let i = 0; i < 300; i++) {
+      const attributes: { [name: string]: number } = {};
+      for (const name of FEELING_NAMES) {
+        attributes[name] = Phaser.Math.RND.frac();
+      }
+
+      // const feelingNames = Phaser.Math.RND.shuffle(FEELING_NAMES.slice()).slice(0, 3);
+      // const values = feelingNames.map(() => Phaser.Math.RND.frac());
+      // const normalized = values.map(v => v / values.reduce((sum, val) => sum + val, 0));
+
+      // feelingNames.forEach((name, i) => {
+      //   attributes[name] = normalized[i];
+      // });
+
+      this.entities.push({
+        id: i,
+        type: 'vessel',
+        variant: Phaser.Math.RND.integerInRange(0, VESSEL_VARIANTS.length - 1),
+        // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
+        r: 120,
+        drift: new Phaser.Math.Vector2(),
+        vel: new Phaser.Math.Vector2(),
+        offset: new Phaser.Math.Vector2(),
+        targetAttunement: 0,
+        attunement: 0,
+        locked: Phaser.Math.RND.frac() > 0.8,
+        attributes,
+      });
+    }
+  }
+
   // update(time: number, delta: number) {
 
   // }
@@ -74,6 +106,26 @@ export class VesselController extends SceneController {
     }
   }
 
+  private initSprite(sprite: Vessel) {
+    const { scene } = this;
+
+    sprite.blur = scene.add.image(0, 0, 'vessel_blur');
+    sprite.base = scene.add.image(0, 0, 'vessel_base');
+    sprite.highlight = scene.add.image(0, 0, 'vessel_highlight');
+    sprite.glow = scene.add.image(0, 0, 'vessel_glow');
+    sprite.icon = scene.add.image(0, -3, 'lock');
+
+    sprite.add(sprite.blur);
+    sprite.add(sprite.base);
+    sprite.add(sprite.highlight);
+    sprite.add(sprite.glow);
+    sprite.add(sprite.icon);
+
+    sprite.setSize(sprite.base.width, sprite.base.height);
+    sprite.setScrollFactor(0);
+    sprite.setInteractive();
+  }
+
   drawSprite(
     params: {
       entity: FieldEntity,
@@ -99,7 +151,7 @@ export class VesselController extends SceneController {
     const baseAlpha = Math.pow(alpha, 2.5);
 
     sprite.blur
-      .setTint(color.clone().lighten((0) * 100).color)
+      .setTint(color.clone().lighten((1 - attunement) * 100).color)
       .setAlpha((1 - alpha) * Math.pow(alpha, .5));
 
     sprite.base
@@ -110,7 +162,7 @@ export class VesselController extends SceneController {
       .setAlpha(baseAlpha);
 
     sprite.glow
-      .setTint(color.color)
+      .setTint(color.clone().lighten(50).color)
       .setAlpha(baseAlpha * attunement);
 
     sprite.icon.setAlpha(entity.locked ? baseAlpha : 0);
@@ -123,57 +175,6 @@ export class VesselController extends SceneController {
       .setActive(true);
 
     sprite.entity = entity;
-  }
-
-  private createVesselEntities() {
-    for (let i = 0; i < 300; i++) {
-      const attributes: { [name: string]: number } = {};
-      for (const name of FEELING_NAMES) {
-        attributes[name] = Phaser.Math.RND.frac();
-      }
-
-      // const feelingNames = Phaser.Math.RND.shuffle(FEELING_NAMES.slice()).slice(0, 3);
-      // const values = feelingNames.map(() => Phaser.Math.RND.frac());
-      // const normalized = values.map(v => v / values.reduce((sum, val) => sum + val, 0));
-
-      // feelingNames.forEach((name, i) => {
-      //   attributes[name] = normalized[i];
-      // });
-
-      this.entities.push({
-        type: 'vessel',
-        variant: Phaser.Math.RND.integerInRange(0, VESSEL_VARIANTS.length - 1),
-        // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
-        r: 120,
-        drift: new Phaser.Math.Vector2(),
-        vel: new Phaser.Math.Vector2(),
-        offset: new Phaser.Math.Vector2(),
-        targetAttunement: 0,
-        attunement: 0,
-        locked: Phaser.Math.RND.frac() > 0.8,
-        attributes,
-      });
-    }
-  }
-
-  private initSprite(sprite: Vessel) {
-    const { scene } = this;
-
-    sprite.blur = scene.add.image(0, 0, 'vessel_blur');
-    sprite.base = scene.add.image(0, 0, 'vessel_base');
-    sprite.highlight = scene.add.image(0, 0, 'vessel_highlight');
-    sprite.glow = scene.add.image(0, 0, 'vessel_glow');
-    sprite.icon = scene.add.image(0, -3, 'lock');
-
-    sprite.add(sprite.blur);
-    sprite.add(sprite.base);
-    sprite.add(sprite.highlight);
-    sprite.add(sprite.glow);
-    sprite.add(sprite.icon);
-
-    sprite.setSize(sprite.base.width, sprite.base.height);
-    sprite.setScrollFactor(0);
-    sprite.setInteractive();
   }
 }
 

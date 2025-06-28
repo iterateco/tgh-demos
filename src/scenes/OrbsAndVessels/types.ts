@@ -29,6 +29,7 @@ export const ORB_VARIANTS = Object.entries(FEELINGS).map(([name, h]) => {
 });
 
 export interface FieldEntity {
+  id: number
   type: 'vessel' | 'orb'
   variant: number
   r: number
