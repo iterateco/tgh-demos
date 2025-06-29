@@ -121,18 +121,7 @@ export class ClippingTest extends BaseScene {
       .setScrollFactor(0);
 
     this.clouds = [
-      {
-        sprite: this.add.tileSprite(0, 0, 0, 0, 'clouds_1')
-          .setScrollFactor(0),
-        accel: -0.01,
-        scrollRatio: 0.16
-      },
-      {
-        sprite: this.add.tileSprite(0, 0, 0, 0, 'clouds_2')
-          .setScrollFactor(0),
-        accel: 0.02,
-        scrollRatio: 0.18
-      }
+
     ];
 
     this.background = [
@@ -217,10 +206,7 @@ export class ClippingTest extends BaseScene {
       far: cameraProps.far,
       fov: cameraProps.fov,
       getEntity: (seed) => {
-        if (seed % 10 === 0) {
-          return this.orbController.createEntity(seed);
-        }
-        return this.vesselController.entities[seed % this.vesselController.entities.length];
+        return this.orbController.createEntity(seed);
       }
     });
 
@@ -306,7 +292,7 @@ export class ClippingTest extends BaseScene {
 
     for (const item of renderItems) {
       if (item.entity.type === 'vessel') {
-        this.vesselController.drawSprite(item);
+        //this.vesselController.drawSprite(item);
       } else {
         this.orbController.drawSprite(item);
       }
