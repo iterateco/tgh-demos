@@ -131,11 +131,11 @@ export class OrbController extends SceneController {
 
     sprite.nebula
       .setTint(color.color)
-      .setAlpha(entity.id % 4 === 0 ? 1 : 0);
+      .setAlpha(entity.id % 2 === 0 ? 1 : 0);
 
     sprite.burst
       .setAlpha(Math.pow(alpha, 2.5))
-      .setAlpha(entity.id % 4 === 0 ? 0 : 1);
+      .setAlpha(entity.id % 2 === 0 ? 0 : 1);
     //.setRotation(this.orbRotation);
 
     sprite
@@ -148,8 +148,7 @@ export class OrbController extends SceneController {
     sprite.trail
       .setDepth(depth - 1)
       .setParticleTint(color.color)
-      .setAlpha(0.75 * alpha * entity.transitionFactor)
-      .setAlpha(0)
+      .setAlpha(entity.id % 4 === 0 ? 0.75 : 0)
       .setVisible(true)
       .setActive(true);
 
