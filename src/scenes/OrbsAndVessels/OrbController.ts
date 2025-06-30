@@ -26,12 +26,22 @@ export class OrbController extends SceneController {
   constructor(scene: Phaser.Scene) {
     super(scene);
 
-    const baseNebulaShader = new Phaser.Display.BaseShader('nebula_shader', NEBULA_SHADER);
-    const nebulaShader = scene.add.shader(baseNebulaShader, 0, 0, 512, 512);
+    const nebulaShader = scene.add.shader({
+      name: 'nebula_tex',
+      fragmentSource: NEBULA_SHADER,
+      setupUniforms: (setUniform: any) => {
+        setUniform('time', scene.game.loop.getDuration());
+      }
+    }, 0, 0, 512, 512);
     nebulaShader.setRenderToTexture('nebula');
 
-    const baseBurstShader = new Phaser.Display.BaseShader('burst_shader', BURST_SHADER);
-    const burstShader = scene.add.shader(baseBurstShader, 0, 0, 512, 512);
+    const burstShader = scene.add.shader({
+      name: 'burst_tex',
+      fragmentSource: BURST_SHADER,
+      setupUniforms: (setUniform: any) => {
+        setUniform('time', scene.game.loop.getDuration());
+      }
+    }, 0, 0, 512, 512);
     burstShader.setRenderToTexture('burst');
 
     this.sprites = scene.add.group({
@@ -174,11 +184,11 @@ const NEBULA_SHADER = `
 precision mediump float;
 
 uniform float time;
-uniform vec2 resolution;
 uniform vec3 uColor;
 
+varying vec2 outTexCoord;
+
 #define iTime time
-#define iResolution resolution
 
 float snoise(vec3 uv, float res)
 {
@@ -203,16 +213,21 @@ float snoise(vec3 uv, float res)
 	return mix(r0, r1, f.z)*2.-1.;
 }
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
+void main(void)
 {
-    vec2 p = (-.5 + fragCoord.xy / iResolution.xy) * 1.5;
-    p.x *= iResolution.x / iResolution.y;
+    vec2 uv = outTexCoord;
+
+    // Centered and aspect-correct coordinates in range [-0.75, 0.75]
+    vec2 p = (uv - 0.5) * 1.5;
+
+    float aspect = 1.0; // square output assumed (512x512)
+    p.x *= aspect;
 
     float color = 3.0 - (3.0 * length(2.0 * p));
 
     vec3 coord = vec3(atan(p.x, p.y) / 6.2832 + 0.5, length(p) * 0.4, 0.5);
 
-    float detail = 8.0; // lower for blur
+    float detail = 8.0;
     float otherThing = 2.0;
 
     for (int i = 1; i <= 3; i++) {
@@ -220,85 +235,77 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         color += (otherThing / power) * snoise(coord + vec3(0.0, -iTime * 0.1, iTime * 0.01), power * detail);
     }
 
-    vec3 finalColor = vec3(0.25, 0.25, 0.25) * pow(max(color, 0.0), 1.2); // gamma-adjusted color
+    vec3 finalColor = vec3(0.25) * pow(max(color, 0.0), 1.2);
 
-    vec2 p2 = (-.5 + fragCoord.xy / iResolution.xy);
-    float dist = length(p2); // 0.0 at center, ~0.7 at corners
+    float dist = length(uv - 0.5);
     float alpha = smoothstep(0.5, 0.0, dist);
 
-    fragColor = vec4(finalColor * alpha, 0.0);
-}
-
-void main(void)
-{
-    mainImage(gl_FragColor, gl_FragCoord.xy);
+    gl_FragColor = vec4(finalColor * alpha, 0.0);
 }
 `;
 
 const BURST_SHADER = `
-  precision mediump float;
+precision mediump float;
 
-  uniform float time;
-  uniform vec2 resolution;
-  uniform sampler2D uMainSampler;
+uniform float time;
+uniform sampler2D uMainSampler;
 
-  varying vec2 fragCoord;
+varying vec2 outTexCoord;
 
-  #define iTime time;
-  #define iResolution resolution;
+#define iTime time;
 
-  // Particle intensity constants
-  const float part_int_div = 40000.;                            // Divisor of the particle intensity. Tweak this value to make the particles more or less bright
-  const float part_int_factor_min = 0.1;                        // Minimum initial intensity of a particle
-  const float part_int_factor_max = 3.2;                        // Maximum initial intensity of a particle
-  const float mp_int = 16.;                                     // Initial intensity of the main particle
-  const float dist_factor = 2.;                                 // Distance factor applied before calculating the intensity
-  const float ppow = 2.3;                                      // Exponent of the intensity in function of the distance
+// Particle intensity constants
+const float part_int_div = 40000.;                            // Divisor of the particle intensity. Tweak this value to make the particles more or less bright
+const float part_int_factor_min = 0.1;                        // Minimum initial intensity of a particle
+const float part_int_factor_max = 3.2;                        // Maximum initial intensity of a particle
+const float mp_int = 16.;                                     // Initial intensity of the main particle
+const float dist_factor = 2.;                                 // Distance factor applied before calculating the intensity
+const float ppow = 2.3;                                      // Exponent of the intensity in function of the distance
 
-  // Particle star constants
-  const vec2 part_starhv_dfac = vec2(9., 0.32);                 // x-y transformation vector of the distance to get the horizontal and vertical star branches
-  const float part_starhv_ifac = 0.25;                          // Intensity factor of the horizontal and vertical star branches
-  const vec2 part_stardiag_dfac = vec2(13., 0.61);              // x-y transformation vector of the distance to get the diagonal star branches
-  const float part_stardiag_ifac = 0.19;                        // Intensity factor of the diagonal star branches
-  const float pulse_speed = 4.0;
+// Particle star constants
+const vec2 part_starhv_dfac = vec2(9., 0.32);                 // x-y transformation vector of the distance to get the horizontal and vertical star branches
+const float part_starhv_ifac = 0.25;                          // Intensity factor of the horizontal and vertical star branches
+const vec2 part_stardiag_dfac = vec2(13., 0.61);              // x-y transformation vector of the distance to get the diagonal star branches
+const float part_stardiag_ifac = 0.19;                        // Intensity factor of the diagonal star branches
+const float pulse_speed = 4.0;
 
-  // Main function to draw particles, outputs the rgb color.
-  vec3 drawParticles(vec2 uv, float timedelta)
-  {
-      vec3 pcol = vec3(0.);
-      vec2 ppos = vec2(0.5, 0.5);
-      float dist = distance(uv, ppos);
+// Main function to draw particles, outputs the rgb color.
+vec3 drawParticles(vec2 uv, float timedelta)
+{
+    vec3 pcol = vec3(0.);
+    vec2 ppos = vec2(0.5, 0.5);
+    float dist = distance(uv, ppos);
 
-      // Draws the eight-branched star
-      // Horizontal and vertical branches
-      vec2 uvppos = uv - ppos;
-      float distv = distance(uvppos*part_starhv_dfac + ppos, ppos);
-      float disth = distance(uvppos*part_starhv_dfac.yx + ppos, ppos);
-      // Diagonal branches
-      vec2 uvpposd = 0.7071*vec2(dot(uvppos, vec2(1., 1.)), dot(uvppos, vec2(1., -1.)));
-      float distd1 = distance(uvpposd*part_stardiag_dfac + ppos, ppos);
-      float distd2 = distance(uvpposd*part_stardiag_dfac.yx + ppos, ppos);
-      // Middle point intensity star inensity
-      float pint1 = 1./(dist*dist_factor + 0.015) + part_starhv_ifac/(disth*dist_factor + 0.01) + part_starhv_ifac/(distv*dist_factor + 0.01) + part_stardiag_ifac/(distd1*dist_factor + 0.01) + part_stardiag_ifac/(distd2*dist_factor + 0.01);
+    // Draws the eight-branched star
+    // Horizontal and vertical branches
+    vec2 uvppos = uv - ppos;
+    float distv = distance(uvppos*part_starhv_dfac + ppos, ppos);
+    float disth = distance(uvppos*part_starhv_dfac.yx + ppos, ppos);
+    // Diagonal branches
+    vec2 uvpposd = 0.7071*vec2(dot(uvppos, vec2(1., 1.)), dot(uvppos, vec2(1., -1.)));
+    float distd1 = distance(uvpposd*part_stardiag_dfac + ppos, ppos);
+    float distd2 = distance(uvpposd*part_stardiag_dfac.yx + ppos, ppos);
+    // Middle point intensity star inensity
+    float pint1 = 1./(dist*dist_factor + 0.015) + part_starhv_ifac/(disth*dist_factor + 0.01) + part_starhv_ifac/(distv*dist_factor + 0.01) + part_stardiag_ifac/(distd1*dist_factor + 0.01) + part_stardiag_ifac/(distd2*dist_factor + 0.01);
 
-      if (part_int_factor_max*pint1>6.)
-      {
-          float pulse = 0.75 + 0.25 * sin(time * pulse_speed);
-          float pint = pulse * part_int_factor_max*(pow(pint1, ppow)/part_int_div)*mp_int;
-          pcol+= vec3(pint, pint, pint);
-      }
+    if (part_int_factor_max*pint1>6.)
+    {
+        float pulse = 0.75 + 0.25 * sin(time * pulse_speed);
+        float pint = pulse * part_int_factor_max*(pow(pint1, ppow)/part_int_div)*mp_int;
+        pcol+= vec3(pint, pint, pint);
+    }
 
-      return pcol;
-  }
+    return pcol;
+}
 
-  void main(void)
-  {
-      vec2 uv = fragCoord.xy / resolution.xy;
-      vec3 pcolor = vec3(0.0);
+void main(void)
+{
+    vec2 uv = outTexCoord.xy;
+    vec3 pcolor = vec3(0.0);
 
-      pcolor += drawParticles(uv, 0.);
-      gl_FragColor = vec4(pcolor, 0.);
-  }
+    pcolor += drawParticles(uv, 0.);
+    gl_FragColor = vec4(pcolor, 0.);
+}
 `;
 
 function harms(freq: number[], amp: number[], phase: number[], time: number) {

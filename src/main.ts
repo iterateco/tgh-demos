@@ -1,5 +1,4 @@
 import * as Phaser from 'phaser';
-import { ClippingTest } from './scenes/ClippingTest';
 import { Main } from './scenes/Main';
 import { OrbsAndVessels } from './scenes/OrbsAndVessels';
 import { VesselField2D } from './scenes/VesselField2D';
@@ -25,8 +24,7 @@ const config: Phaser.Types.Core.GameConfig = {
     VesselField2D,
     VesselField3D,
     VesselStream,
-    OrbsAndVessels,
-    ClippingTest
+    OrbsAndVessels
   ]
 };
 

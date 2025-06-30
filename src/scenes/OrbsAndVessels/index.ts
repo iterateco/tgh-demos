@@ -3,7 +3,6 @@ import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
 import { Orb, OrbController } from './OrbController';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
-import TrailFX from './TrailFX';
 import { FieldEntity, ORB_VARIANTS, OrbEntity, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
@@ -57,9 +56,6 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   create() {
-    const renderer = this.sys.renderer as Phaser.Renderer.WebGL.WebGLRenderer;
-    renderer.pipelines.addPostPipeline('trail', TrailFX);
-
     this.vesselController = new VesselController(this);
     this.orbController = new OrbController(this);
 
