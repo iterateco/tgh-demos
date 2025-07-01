@@ -35,8 +35,6 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
 
   private createWhiteWedgeTexture() {
     const wedgeCount = this.props.wedges.length || 1;
-    const segmentThickness = (this.outerRadius - this.centerHoleRadius) / this.segmentCount;
-    const wedgeAngle = (Math.PI * 2 - this.wedgeGapAngle * wedgeCount) / wedgeCount;
 
     // Increase render texture resolution for smoother edges
     const rtScale = 2;
@@ -94,11 +92,6 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
 
     const { wedges } = this.props;
     const wedgeCount = wedges.length;
-    const segmentThickness = (this.outerRadius - this.centerHoleRadius) / this.segmentCount;
-    const fullAngle = Math.PI * 2;
-    const totalGapAngle = this.wedgeGapAngle * wedgeCount;
-    const usableAngle = fullAngle - totalGapAngle;
-    const wedgeAngle = usableAngle / wedgeCount;
 
     const rtScale = 2;
     const rtSize = (this.outerRadius * 2 + 20) * rtScale;
@@ -137,12 +130,6 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
       }
       this.segmentSprites.push(wedgeSprites);
     }
-
-    // Debug: Draw a circle at the container origin
-    const debugGfx = this.scene.add.graphics();
-    debugGfx.lineStyle(2, 0x00ff00, 1);
-    debugGfx.strokeCircle(0, 0, 10);
-    this.add(debugGfx);
   }
 
   public updateData(newData: ResonanceMeterProps): void {
@@ -164,14 +151,9 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     endAngle: number
   ): void {
     const steps = 40;
-    const gapPx = 3;
 
-    // Use the *inner* radius to compute the angular gap, so the gap is at least 3px at the center
-    const gapAngle = gapPx / innerRadius;
-
-    // Cut a gap of gapAngle from both sides
-    const arcStart = startAngle + gapAngle / 2;
-    const arcEnd = endAngle - gapAngle / 2;
+    const arcStart = startAngle;
+    const arcEnd = endAngle;
 
     gfx.beginPath();
 
