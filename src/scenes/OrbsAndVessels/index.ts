@@ -367,7 +367,7 @@ export class OrbsAndVessels extends BaseScene {
     const camera = this.cameras.main;
     const { worldHeight } = this.entityField;
 
-    this.sky.setDisplaySize(Math.max(width, 1024), height * 1.3);
+    this.sky.setDisplaySize(Math.max(width, 1024), height * 1.5);
 
     for (const ent of this.background) {
       ent.sprite.setSize(width * 2, height * 2);
