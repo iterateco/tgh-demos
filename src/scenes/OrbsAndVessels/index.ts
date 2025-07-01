@@ -169,7 +169,7 @@ export class OrbsAndVessels extends BaseScene {
     const props: ResonanceMeterProps = {
       attunementLife: 0.4,
       wedges: [
-        { color: 0xE23B3B, level: 0 },
+        { color: 0xE23B3B, level: 2 },
         { color: 0xD1B757, level: 3 },
         { color: 0x57D157, level: 1 },
         { color: 0x57CDD1, level: 0 },
