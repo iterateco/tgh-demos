@@ -13,7 +13,7 @@ export class VesselController extends SceneController {
 
     this.createVesselEntities();
 
-    this.scene.tweens.add({
+    scene.tweens.add({
       targets: this,
       resonanceScale: { from: -0.1, to: 0.1 },
       ease: 'Sine.easeInOut',
@@ -24,7 +24,7 @@ export class VesselController extends SceneController {
       hold: 100
     });
 
-    this.sprites = this.scene.add.group({
+    this.sprites = scene.add.group({
       classType: Vessel,
       createCallback: (sprite: Vessel) => this.initSprite(sprite)
     });

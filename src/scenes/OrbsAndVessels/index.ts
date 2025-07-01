@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
 import { Orb, OrbController } from './OrbController';
+import { ResonanceMeter, ResonanceMeterProps } from './ResonanceMeter';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
 import { FieldEntity, OrbEntity, VesselEntity } from './types';
 import { VesselController } from './VesselController';
@@ -27,6 +28,7 @@ export class OrbsAndVessels extends BaseScene {
 
   vesselController: VesselController;
   orbController: OrbController;
+  resonanceMeter: ResonanceMeter;
 
   collectedOrbs: OrbEntity[] = [];
 
@@ -71,6 +73,7 @@ export class OrbsAndVessels extends BaseScene {
 
     this.createBackground();
     this.createEntityField();
+    this.createResonanceMeter();
     this.createStats();
 
     this.scale.on('resize', this.resize, this);
@@ -162,12 +165,43 @@ export class OrbsAndVessels extends BaseScene {
     this.entityField.minPointDist = 700;
   }
 
+  createResonanceMeter() {
+    const props: ResonanceMeterProps = {
+      attunementLife: 0.4,
+      wedges: [
+        { color: 0xE23B3B, level: 0 },
+        { color: 0xD1B757, level: 3 },
+        { color: 0x57D157, level: 1 },
+        { color: 0x57CDD1, level: 0 },
+        { color: 0x5782D1, level: 1 },
+        { color: 0x7057D1, level: 0 },
+        { color: 0xD157B3, level: 3 }
+      ]
+    };
+    // const props: ResonanceMeterProps = {
+    //   attunementLife: 0.5,
+    //   wedges: Object.values(EMOTIONS).map(color => ({
+    //     color,
+    //     level: Math.round(Math.random() * 3)
+    //   }))
+    // };
+
+    this.resonanceMeter = new ResonanceMeter(this, 120, 120, props);
+    this.resonanceMeter
+      //.setScale(0.5)
+      .setDepth(100000)
+      .setScrollFactor(0);
+    //.enableFilters();
+
+    //this.resonanceMeter.filters.external.addGlow(0xffffff, 4, 2);
+  }
+
   createStats() {
     this.fpsText = this.add.text(10, 10, 'FPS: 0', {
       fontSize: 12,
       color: '#ffffff',
     })
-      .setAlpha(0.75)
+      .setAlpha(0)
       .setScrollFactor(0);
   }
 
