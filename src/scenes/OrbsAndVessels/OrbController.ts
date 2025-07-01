@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SceneController } from './SceneController';
-import { FieldEntity, ORB_VARIANTS, OrbEntity } from './types';
+import { EMOTION_KEYS, EMOTIONS, FieldEntity, OrbEntity } from './types';
 
 const MOVE_CONFIG = {
   x: {
@@ -58,7 +58,7 @@ export class OrbController extends SceneController {
     const orb: OrbEntity = {
       id,
       type: 'orb',
-      variant: Phaser.Math.RND.integerInRange(0, ORB_VARIANTS.length - 1),
+      emotion: Phaser.Math.RND.pick(EMOTION_KEYS),
       // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
       r: 120,
       prevOffset: new Phaser.Math.Vector2(),
@@ -124,8 +124,8 @@ export class OrbController extends SceneController {
   ) {
     const { alpha, depth } = params;
     const entity = params.entity as OrbEntity;
-    const { variant, offset } = entity;
-    const { color } = ORB_VARIANTS[variant];
+    const { emotion, offset } = entity;
+    const color = EMOTIONS[emotion];
     const x = params.x + offset.x * params.scale;
     const y = params.y + offset.y * params.scale;
     const scale = params.scale * entity.transitionFactor;
@@ -139,7 +139,7 @@ export class OrbController extends SceneController {
     }
 
     sprite.nebula
-      .setTint(color.color)
+      .setTint(color)
       .setAlpha(alpha * 0.75);
 
     sprite.burst

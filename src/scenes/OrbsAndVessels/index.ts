@@ -3,10 +3,10 @@ import { Entity, Scrollable } from '../../types';
 import { BaseScene } from '../BaseScene';
 import { Orb, OrbController } from './OrbController';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
-import { FieldEntity, ORB_VARIANTS, OrbEntity, VesselEntity } from './types';
+import { FieldEntity, OrbEntity, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
-const BG_SIZE = { width: 1024, height: 768 };
+const BG_SIZE = { width: 1024, height: 1024 };
 
 export class OrbsAndVessels extends BaseScene {
   cameraProps = {
@@ -28,7 +28,7 @@ export class OrbsAndVessels extends BaseScene {
   vesselController: VesselController;
   orbController: OrbController;
 
-  collectedOrbs: FieldEntity[] = [];
+  collectedOrbs: OrbEntity[] = [];
 
   entityField!: ToroidalPoissonDisc3D<FieldEntity>;
 
@@ -64,7 +64,7 @@ export class OrbsAndVessels extends BaseScene {
     //   { variant: 2 },
     //   { variant: 4 }
     // ] as any
-    this.updateVesselAttunements();
+    // this.updateVesselResonances();
 
     const camera = this.cameras.main;
     camera.centerOn(0, 0);
@@ -111,7 +111,7 @@ export class OrbsAndVessels extends BaseScene {
         this.collectedOrbs = this.collectedOrbs.slice(1);
       }
 
-      this.updateVesselAttunements();
+      this.updateVesselResonances();
     });
   }
 
@@ -320,32 +320,25 @@ export class OrbsAndVessels extends BaseScene {
     text += `\nActive Orbs: ${this.orbController.sprites.countActive(true)}`;
     text += '\nCollected Orbs:';
     this.collectedOrbs.forEach(orb => {
-      const variantProps = ORB_VARIANTS[orb.variant];
-      text += `\n ${variantProps.name}`;
+      text += `\n ${orb.emotion}`;
     });
     this.fpsText.setText(text);
   }
 
-  updateVesselAttunements() {
+  updateVesselResonances() {
     for (const vessel of this.vesselController.entities) {
       if (vessel.locked) {
-        vessel.attunement = 0;
+        vessel.resonance = 0;
         continue;
       }
 
-      const attrs = vessel.attributes;
       let sum = 0;
       for (const orb of this.collectedOrbs) {
-        const variantProps = ORB_VARIANTS[orb.variant];
-        if (attrs[variantProps.name]) {
-          sum += attrs[variantProps.name];
+        if (vessel.emotion === orb.emotion) {
+          sum += 1;
         }
       }
-      let attunement = Math.pow(sum / 3, 2);
-      if (attunement >= 0.75) {
-        attunement = 1;
-      }
-      vessel.targetAttunement = attunement;
+      vessel.targetResonance = Math.pow(sum / 3, 2);
     };
   }
 
@@ -361,13 +354,13 @@ export class OrbsAndVessels extends BaseScene {
 
   resize() {
     const { width, height } = this.scale;
-    const scaleX = width / BG_SIZE.width;
-    const scaleY = height / BG_SIZE.height;
-    const scale = Math.max(scaleX, scaleY);
+    // const scaleX = width / BG_SIZE.width;
+    // const scaleY = height / BG_SIZE.height;
+    // const scale = Math.max(scaleX, scaleY);
     const camera = this.cameras.main;
     const { worldHeight } = this.entityField;
 
-    this.sky.setDisplaySize(Math.max(width, 1024), height * 1.5);
+    this.sky.setDisplaySize(Math.max(width, BG_SIZE.width), height * 1.5);
 
     for (const ent of this.background) {
       ent.sprite.setSize(width * 2, height * 2);

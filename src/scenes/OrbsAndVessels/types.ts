@@ -1,51 +1,35 @@
 import Phaser from 'phaser';
 
-export const FEELINGS = {
-  gratitude: 0.2,
-  peace: 0.4,
-  wonder: 0.6,
-  longing: 0.7,
-  love: 0.8
+export const EMOTIONS = {
+  joy: 0xE23B3B,
+  gratitude: 0xD1B757,
+  peace: 0x57D157,
+  wonder: 0x57CDD1,
+  hope: 0x5782D1,
+  longing: 0x7057D1,
+  love: 0xD157B3,
 };
 
-export const FEELING_NAMES = Object.keys(FEELINGS);
-
-export const VESSEL_VARIANTS = new Array(16).fill(0).map((_, i) => {
-  const h = i / 16;
-  const s = 0.6;
-  const l = 0.65;
-  return {
-    color: Phaser.Display.Color.HSLToColor(h, s, l)
-  };
-});
-
-export const ORB_VARIANTS = Object.entries(FEELINGS).map(([name, h]) => {
-  const s = 0.7;
-  const l = 0.5;
-  return {
-    name,
-    color: Phaser.Display.Color.HSLToColor(h, s, l)
-  };
-});
+export const EMOTION_KEYS = Object.keys(EMOTIONS);
 
 export interface FieldEntity {
   id: number
   type: 'vessel' | 'orb'
-  variant: number
   r: number
   offset: Phaser.Math.Vector2
 }
 
 export interface OrbEntity extends FieldEntity {
+  emotion: string
   seed: number
   transitionFactor: number
   prevOffset: Phaser.Math.Vector2
 }
 
 export interface VesselEntity extends FieldEntity {
-  attributes: { [name: string]: number },
-  targetAttunement: number
-  attunement: number
+  emotion: string
+  targetResonance: number
+  resonance: number
   locked: boolean
   drift: Phaser.Math.Vector2
   vel: Phaser.Math.Vector2

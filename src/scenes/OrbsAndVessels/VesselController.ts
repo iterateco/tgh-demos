@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { SceneController } from './SceneController';
-import { FEELING_NAMES, FieldEntity, VESSEL_VARIANTS, VesselEntity } from './types';
+import { EMOTION_KEYS, EMOTIONS, FieldEntity, VesselEntity } from './types';
 
 export class VesselController extends SceneController {
   entities: VesselEntity[] = [];
   sprites!: Phaser.GameObjects.Group;
 
-  attunementScale = 1;
+  resonanceScale = 1;
 
   constructor(scene: Phaser.Scene) {
     super(scene);
@@ -15,7 +15,7 @@ export class VesselController extends SceneController {
 
     this.scene.tweens.add({
       targets: this,
-      attunementScale: { from: -0.1, to: 0.1 },
+      resonanceScale: { from: -0.1, to: 0.1 },
       ease: 'Sine.easeInOut',
       duration: 300,
       yoyo: true,
@@ -32,32 +32,18 @@ export class VesselController extends SceneController {
 
   private createVesselEntities() {
     for (let i = 0; i < 300; i++) {
-      const attributes: { [name: string]: number } = {};
-      for (const name of FEELING_NAMES) {
-        attributes[name] = Phaser.Math.RND.frac();
-      }
-
-      // const feelingNames = Phaser.Math.RND.shuffle(FEELING_NAMES.slice()).slice(0, 3);
-      // const values = feelingNames.map(() => Phaser.Math.RND.frac());
-      // const normalized = values.map(v => v / values.reduce((sum, val) => sum + val, 0));
-
-      // feelingNames.forEach((name, i) => {
-      //   attributes[name] = normalized[i];
-      // });
-
       this.entities.push({
         id: i,
         type: 'vessel',
-        variant: Phaser.Math.RND.integerInRange(0, VESSEL_VARIANTS.length - 1),
         // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
         r: 120,
         drift: new Phaser.Math.Vector2(),
         vel: new Phaser.Math.Vector2(),
         offset: new Phaser.Math.Vector2(),
-        targetAttunement: 0,
-        attunement: 0,
+        targetResonance: 0,
+        resonance: 0,
         locked: Phaser.Math.RND.frac() > 0.8,
-        attributes,
+        emotion: Phaser.Math.RND.pick(EMOTION_KEYS)
       });
     }
   }
@@ -93,15 +79,15 @@ export class VesselController extends SceneController {
     offset.x += vel.x;
     offset.y += vel.y;
 
-    const attunementDiff = entity.targetAttunement - entity.attunement;
-    const attunementInc = 0.0004 * delta;
+    const resonanceDiff = entity.targetResonance - entity.resonance;
+    const resonanceInc = 0.0004 * delta;
 
-    if (attunementDiff !== 0) {
-      if (Math.abs(attunementDiff) < attunementInc) {
-        entity.attunement = entity.targetAttunement;
+    if (resonanceDiff !== 0) {
+      if (Math.abs(resonanceDiff) < resonanceInc) {
+        entity.resonance = entity.targetResonance;
       } else {
-        const attunementDir = attunementDiff > 0 ? 1 : -1;
-        entity.attunement += attunementInc * attunementDir;
+        const resonanceDir = resonanceDiff > 0 ? 1 : -1;
+        entity.resonance += resonanceInc * resonanceDir;
       }
     }
   }
@@ -137,8 +123,8 @@ export class VesselController extends SceneController {
   ) {
     const { alpha, depth } = params;
     const entity = params.entity as VesselEntity;
-    const { variant, attunement, offset } = entity;
-    const { color } = VESSEL_VARIANTS[variant];
+    const { emotion, resonance, offset } = entity;
+    const color = EMOTIONS[emotion];
     const sprite = (this.sprites.get() as Vessel);
 
     const x = params.x + offset.x * params.scale;
@@ -147,30 +133,32 @@ export class VesselController extends SceneController {
     const interactionThreshold = 0.75;
     let interactionFactor = 0;
 
-    if (attunement <= interactionThreshold) {
+    if (resonance <= interactionThreshold) {
       interactionFactor = 0;
     } else {
-      interactionFactor = (attunement - interactionThreshold) * 1 / (1 - interactionThreshold);
+      interactionFactor = (resonance - interactionThreshold) * 1 / (1 - interactionThreshold);
     }
 
-    const attunementScaleFactor = 1 + this.attunementScale * attunement;
-    const scale = params.scale * attunementScaleFactor;
+    const resonanceScaleFactor = 1 + this.resonanceScale * resonance;
+    const scale = params.scale * resonanceScaleFactor;
 
     const baseAlpha = Math.pow(alpha, 2.5);
 
+    const c = Phaser.Display.Color.ValueToColor(color);
+
     sprite.blur
-      .setTint(color.clone().lighten((1 - attunement) * 100).color)
+      .setTint(c.clone().lighten((1 - resonance) * 100).color)
       .setAlpha((1 - alpha) * Math.pow(alpha, .5));
 
     sprite.base
-      .setTint(color.clone().saturate(interactionFactor * 25).color)
-      .setAlpha(baseAlpha * (0.1 + attunement * 0.9));
+      .setTint(c.clone().saturate(interactionFactor * 25).color)
+      .setAlpha(baseAlpha * (0.1 + resonance * 0.9));
 
     sprite.highlight
-      .setAlpha(baseAlpha * (0.5 + attunement * 0.5));
+      .setAlpha(baseAlpha * (0.5 + resonance * 0.5));
 
     sprite.glow
-      .setTint(color.clone().lighten(50).color)
+      .setTint(c.clone().lighten(50).color)
       .setAlpha(baseAlpha * interactionFactor);
 
     sprite.icon.setAlpha(entity.locked ? baseAlpha : 0);
