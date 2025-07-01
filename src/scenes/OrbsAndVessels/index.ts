@@ -188,7 +188,6 @@ export class OrbsAndVessels extends BaseScene {
 
     this.resonanceMeter = new ResonanceMeter(this, 120, 120, props);
     this.resonanceMeter
-      //.setScale(0.5)
       .setDepth(100000)
       .setScrollFactor(0);
     //.enableFilters();

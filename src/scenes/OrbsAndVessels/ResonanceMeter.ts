@@ -39,44 +39,52 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     const wedgeAngle = (Math.PI * 2 - this.wedgeGapAngle * wedgeCount) / wedgeCount;
 
     // Increase render texture resolution for smoother edges
-    const rtScale = 2; // 2x resolution (try 2 or 4 for higher quality)
+    const rtScale = 2;
     const rtSize = (this.outerRadius * 2 + 20) * rtScale;
 
     // Remove previous textures/frames
-    for (let level = 0; level < this.segmentCount; level++) {
-      const frameKey = `${this.wedgeRTKey}-seg${level}`;
-      if (this.scene.textures.exists(frameKey)) {
-        this.scene.textures.remove(frameKey);
+    for (let w = 0; w < wedgeCount; w++) {
+      for (let level = 0; level < this.segmentCount; level++) {
+        const frameKey = `${this.wedgeRTKey}-w${w}-seg${level}`;
+        if (this.scene.textures.exists(frameKey)) {
+          this.scene.textures.remove(frameKey);
+        }
       }
     }
 
-    // Render each segment as a separate frame
-    for (let level = 0; level < this.segmentCount; level++) {
-      const gfx = this.scene.add.graphics();
-      gfx.x = rtSize / 2;
-      gfx.y = rtSize / 2;
-      gfx.clear();
-      gfx.fillStyle(0xffffff, 1);
+    // Render each wedge/segment as a separate frame
+    for (let w = 0; w < wedgeCount; w++) {
+      const segmentThickness = (this.outerRadius - this.centerHoleRadius) / this.segmentCount;
+      const wedgeAngle = (Math.PI * 2 - this.wedgeGapAngle * wedgeCount) / wedgeCount;
+      const startAngle = w * (wedgeAngle + this.wedgeGapAngle);
 
-      // Scale radii for high-res drawing
-      const innerRadius = (this.centerHoleRadius + segmentThickness * level + this.segmentGap / 2) * rtScale;
-      const outerRadius = (this.centerHoleRadius + segmentThickness * (level + 1) - this.segmentGap / 2) * rtScale;
-      this.drawDonutSliceOnGraphics(
-        gfx,
-        innerRadius,
-        outerRadius,
-        -wedgeAngle / 2,
-        wedgeAngle / 2
-      );
+      for (let level = 0; level < this.segmentCount; level++) {
+        const gfx = this.scene.add.graphics();
+        gfx.x = rtSize / 2;
+        gfx.y = rtSize / 2;
+        gfx.clear();
+        gfx.fillStyle(0xffffff, 1);
 
-      const rt = this.scene.add.renderTexture(0, 0, rtSize, rtSize);
-      rt.draw(gfx, 0, 0);
-      rt.render();
-      gfx.destroy();
+        // Scale radii for high-res drawing
+        const innerRadius = (this.centerHoleRadius + segmentThickness * level + this.segmentGap / 2) * rtScale;
+        const outerRadius = (this.centerHoleRadius + segmentThickness * (level + 1) - this.segmentGap / 2) * rtScale;
+        this.drawDonutSliceOnGraphics(
+          gfx,
+          innerRadius,
+          outerRadius,
+          startAngle - wedgeAngle / 2,
+          startAngle + wedgeAngle / 2
+        );
 
-      const frameKey = `${this.wedgeRTKey}-seg${level}`;
-      rt.saveTexture(frameKey);
-      rt.destroy();
+        const rt = this.scene.add.renderTexture(0, 0, rtSize, rtSize);
+        rt.draw(gfx, 0, 0);
+        rt.render();
+        gfx.destroy();
+
+        const frameKey = `${this.wedgeRTKey}-w${w}-seg${level}`;
+        rt.saveTexture(frameKey);
+        rt.destroy();
+      }
     }
   }
 
@@ -86,21 +94,22 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
 
     const { wedges } = this.props;
     const wedgeCount = wedges.length;
+    const segmentThickness = (this.outerRadius - this.centerHoleRadius) / this.segmentCount;
     const fullAngle = Math.PI * 2;
     const totalGapAngle = this.wedgeGapAngle * wedgeCount;
     const usableAngle = fullAngle - totalGapAngle;
     const wedgeAngle = usableAngle / wedgeCount;
 
-    // Match the render texture size and scale down for display
+    const rtScale = 2;
+    const rtSize = (this.outerRadius * 2 + 20) * rtScale;
     const displaySize = this.outerRadius * 2 + 20;
 
     for (let w = 0; w < wedgeCount; w++) {
       const wedge = wedges[w];
       const wedgeSprites: Phaser.GameObjects.Sprite[] = [];
-      const startAngle = w * (wedgeAngle + this.wedgeGapAngle);
 
       for (let level = 0; level < this.segmentCount; level++) {
-        const frameKey = `${this.wedgeRTKey}-seg${level}`;
+        const frameKey = `${this.wedgeRTKey}-w${w}-seg${level}`;
 
         const isActive = level < wedge.level;
         const baseColor = Phaser.Display.Color.IntegerToColor(wedge.color);
@@ -117,12 +126,11 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
         sprite.setTint(tint);
 
         // Scale down the high-res texture to normal display size
-        sprite.setDisplaySize(displaySize, displaySize);
+        sprite.setScale(displaySize / rtSize);
 
-        const angle = startAngle + wedgeAngle / 2;
+        // No rotation needed, as the wedge is already drawn at the correct angle
         sprite.x = 0;
         sprite.y = 0;
-        sprite.rotation = angle;
 
         this.add(sprite);
         wedgeSprites.push(sprite);
@@ -146,6 +154,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
 
   /**
    * Draws a donut-shaped pie slice (ring segment) on a Phaser.Graphics object.
+   * The gap between wedges is a constant angle, so the separation is a 3px arc at both the inner and outer radius.
    */
   private drawDonutSliceOnGraphics(
     gfx: Phaser.GameObjects.Graphics,
@@ -155,22 +164,36 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     endAngle: number
   ): void {
     const steps = 40;
-    const angleStep = (endAngle - startAngle) / steps;
+    const gapPx = 3;
+
+    // Use the *inner* radius to compute the angular gap, so the gap is at least 3px at the center
+    const gapAngle = gapPx / innerRadius;
+
+    // Cut a gap of gapAngle from both sides
+    const arcStart = startAngle + gapAngle / 2;
+    const arcEnd = endAngle - gapAngle / 2;
 
     gfx.beginPath();
+
+    // Outer arc (from arcStart to arcEnd)
     for (let i = 0; i <= steps; i++) {
-      const angle = startAngle + i * angleStep;
+      const t = i / steps;
+      const angle = arcStart + t * (arcEnd - arcStart);
       const x = Math.cos(angle) * outerRadius;
       const y = Math.sin(angle) * outerRadius;
       if (i === 0) gfx.moveTo(x, y);
       else gfx.lineTo(x, y);
     }
+
+    // Inner arc (from arcEnd to arcStart, reversed)
     for (let i = steps; i >= 0; i--) {
-      const angle = startAngle + i * angleStep;
+      const t = i / steps;
+      const angle = arcStart + t * (arcEnd - arcStart);
       const x = Math.cos(angle) * innerRadius;
       const y = Math.sin(angle) * innerRadius;
       gfx.lineTo(x, y);
     }
+
     gfx.closePath();
     gfx.fillPath();
   }
