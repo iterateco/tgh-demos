@@ -123,7 +123,6 @@ export class VesselController extends SceneController {
 
     sprite.setSize(sprite.base.width, sprite.base.height);
     sprite.setScrollFactor(0);
-    sprite.setInteractive();
   }
 
   drawSprite(
@@ -145,6 +144,15 @@ export class VesselController extends SceneController {
     const x = params.x + offset.x * params.scale;
     const y = params.y + offset.y * params.scale;
 
+    const interactionThreshold = 0.75;
+    let interactionFactor = 0;
+
+    if (attunement <= interactionThreshold) {
+      interactionFactor = 0;
+    } else {
+      interactionFactor = (attunement - interactionThreshold) * 1 / (1 - interactionThreshold);
+    }
+
     const attunementScaleFactor = 1 + this.attunementScale * attunement;
     const scale = params.scale * attunementScaleFactor;
 
@@ -155,15 +163,15 @@ export class VesselController extends SceneController {
       .setAlpha((1 - alpha) * Math.pow(alpha, .5));
 
     sprite.base
-      .setTint(color.color)
-      .setAlpha(baseAlpha * (0.2 + attunement * 0.8));
+      .setTint(color.clone().saturate(interactionFactor * 25).color)
+      .setAlpha(baseAlpha * (0.1 + attunement * 0.9));
 
     sprite.highlight
-      .setAlpha(baseAlpha);
+      .setAlpha(baseAlpha * (0.5 + attunement * 0.5));
 
     sprite.glow
       .setTint(color.clone().lighten(50).color)
-      .setAlpha(baseAlpha * attunement);
+      .setAlpha(baseAlpha * interactionFactor);
 
     sprite.icon.setAlpha(entity.locked ? baseAlpha : 0);
 
@@ -173,6 +181,12 @@ export class VesselController extends SceneController {
       .setScale(scale)
       .setVisible(true)
       .setActive(true);
+
+    if (alpha > 0.5 && interactionFactor > 0) {
+      sprite.setInteractive();
+    } else {
+      sprite.disableInteractive();
+    }
 
     sprite.entity = entity;
   }

@@ -40,7 +40,7 @@ export class OrbsAndVessels extends BaseScene {
 
   preload() {
     super.preload();
-    this.load.image('sky', 'textures/sky.png');
+    this.load.image('sky', 'textures/sky_1.png');
     this.load.image('stars_1', 'textures/stars_1.png');
     this.load.image('stars_2', 'textures/stars_2.png');
     this.load.image('clouds_1', 'textures/clouds_1.png');
@@ -60,11 +60,11 @@ export class OrbsAndVessels extends BaseScene {
     this.orbController = new OrbController(this);
 
     // this.collectedOrbs = [
-    //   { variant: 1 },
-    //   { variant: 1 },
-    //   { variant: 1 }
+    //   { variant: 3 },
+    //   { variant: 2 },
+    //   { variant: 4 }
     // ] as any
-    // this.updateVesselAttunements();
+    this.updateVesselAttunements();
 
     const camera = this.cameras.main;
     camera.centerOn(0, 0);
@@ -113,18 +113,19 @@ export class OrbsAndVessels extends BaseScene {
 
   createBackground() {
     this.sky = this.add.image(0, 0, 'sky')
-      .setOrigin(0.5)
       .setScrollFactor(0);
 
     this.clouds = [
       {
         sprite: this.add.tileSprite(0, 0, 0, 0, 'clouds_1')
+          .setAlpha(0.25)
           .setScrollFactor(0),
         accel: -0.01,
         scrollRatio: 0.16
       },
       {
         sprite: this.add.tileSprite(0, 0, 0, 0, 'clouds_2')
+          .setAlpha(0.5)
           .setScrollFactor(0),
         accel: 0.02,
         scrollRatio: 0.18
@@ -195,6 +196,8 @@ export class OrbsAndVessels extends BaseScene {
     const cameraX = Phaser.Math.Wrap(camera.scrollX + worldWidth / 2, 0, worldWidth);
     const cameraY = Phaser.Math.Wrap(camera.scrollY + worldHeight / 2, 0, worldHeight);
     const cameraZ = Phaser.Math.Wrap(cameraProps.z + worldDepth / 2, 0, worldDepth);
+
+    this.sky.setPosition(width / 2, height / 2 - camera.scrollY * 0.1);
 
     for (const ent of this.background) {
       ent.sprite.setTilePosition(camera.scrollX * ent.scrollRatio, camera.scrollY * ent.scrollRatio);
@@ -327,14 +330,18 @@ export class OrbsAndVessels extends BaseScene {
       }
 
       const attrs = vessel.attributes;
-      let attunement = 0;
+      let sum = 0;
       for (const orb of this.collectedOrbs) {
         const variantProps = ORB_VARIANTS[orb.variant];
         if (attrs[variantProps.name]) {
-          attunement += attrs[variantProps.name];
+          sum += attrs[variantProps.name];
         }
       }
-      vessel.targetAttunement = Math.pow(attunement / 3, 2);
+      let attunement = Math.pow(sum / 3, 2);
+      if (attunement >= 0.75) {
+        attunement = 1;
+      }
+      vessel.targetAttunement = attunement;
     };
   }
 
@@ -352,12 +359,11 @@ export class OrbsAndVessels extends BaseScene {
     const { width, height } = this.scale;
     const scaleX = width / BG_SIZE.width;
     const scaleY = height / BG_SIZE.height;
-    const scale = Math.max(scaleX, scaleY);
+    // const scale = Math.max(scaleX, scaleY);
     const camera = this.cameras.main;
     const { worldHeight } = this.entityField;
 
-    this.sky.setScale(scale);
-    this.sky.setPosition(width / 2, height / 2);
+    this.sky.setScale(Math.max(0.75, scaleX), scaleY * 1.1);
 
     for (const ent of this.background) {
       ent.sprite.setSize(width * 2, height * 2);

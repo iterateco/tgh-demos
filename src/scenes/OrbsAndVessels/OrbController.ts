@@ -95,7 +95,6 @@ export class OrbController extends SceneController {
 
     sprite.setSize(sprite.burst.width, sprite.burst.height);
     sprite.setScrollFactor(0);
-    sprite.setInteractive();
 
     sprite.trail = scene.add.particles(0, 0, 'nebula', {
       speed: 2,
@@ -153,6 +152,12 @@ export class OrbController extends SceneController {
       .setScale(scale)
       .setVisible(true)
       .setActive(true);
+
+    if (alpha > 0.5) {
+      sprite.setInteractive();
+    } else {
+      sprite.disableInteractive();
+    }
 
     sprite.trail
       .setDepth(depth - 1)
