@@ -105,17 +105,13 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
         const frameKey = `${this.wedgeRTKey}-w${w}-seg${level}`;
 
         const isActive = level < wedge.level;
-        const baseColor = Phaser.Display.Color.IntegerToColor(wedge.color);
         const tint = isActive
           ? wedge.color
-          : Phaser.Display.Color.GetColor(
-            Math.round(baseColor.red * 0.3),
-            Math.round(baseColor.green * 0.3),
-            Math.round(baseColor.blue * 0.3)
-          );
+          : 0x888888;
 
         const sprite = this.scene.add.sprite(0, 0, frameKey);
         sprite.setTint(tint);
+        sprite.setAlpha(isActive ? 1 : 0.5);
 
         // Scale down the high-res texture to normal display size
         sprite.setScale(displaySize / rtSize);
@@ -197,13 +193,8 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
       const sprite = this.segmentSprites[wedgeIndex][level];
       const isActive = level < newLevel;
       const wasActive = level < prevLevel;
-      const baseColor = Phaser.Display.Color.IntegerToColor(wedge.color);
       const activeTint = wedge.color;
-      const inactiveTint = Phaser.Display.Color.GetColor(
-        Math.round(baseColor.red * 0.3),
-        Math.round(baseColor.green * 0.3),
-        Math.round(baseColor.blue * 0.3)
-      );
+      const inactiveTint = Phaser.Display.Color.IntegerToColor(0x888888);
 
       // Animate color change
       if (isActive && !wasActive) {
@@ -215,7 +206,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
           onUpdate: tween => {
             const v = tween.getValue();
             const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
-              Phaser.Display.Color.IntegerToColor(inactiveTint),
+              inactiveTint,
               Phaser.Display.Color.IntegerToColor(activeTint),
               1,
               v
@@ -250,7 +241,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
             const v = tween.getValue();
             const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
               Phaser.Display.Color.IntegerToColor(activeTint),
-              Phaser.Display.Color.IntegerToColor(inactiveTint),
+              inactiveTint,
               1,
               v
             );
@@ -259,7 +250,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
         });
       } else {
         // Set color immediately
-        sprite.setTint(isActive ? activeTint : inactiveTint);
+        sprite.setTint(isActive ? activeTint : inactiveTint.color);
       }
     }
   }
