@@ -76,7 +76,11 @@ export class OrbsAndVessels extends BaseScene {
     this.scale.on('resize', this.resize, this);
     this.resize();
 
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, objects: any) => {
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, _objects: any) => {
+      this.prevPointerPos = pointer.position.clone();
+    });
+
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer, objects: any) => {
       this.prevPointerPos = pointer.position.clone();
 
       const object = objects[0];
@@ -359,11 +363,11 @@ export class OrbsAndVessels extends BaseScene {
     const { width, height } = this.scale;
     const scaleX = width / BG_SIZE.width;
     const scaleY = height / BG_SIZE.height;
-    // const scale = Math.max(scaleX, scaleY);
+    const scale = Math.max(scaleX, scaleY);
     const camera = this.cameras.main;
     const { worldHeight } = this.entityField;
 
-    this.sky.setScale(Math.max(0.75, scaleX), scaleY * 1.1);
+    this.sky.setDisplaySize(Math.max(width, 1024), height * 1.3);
 
     for (const ent of this.background) {
       ent.sprite.setSize(width * 2, height * 2);
