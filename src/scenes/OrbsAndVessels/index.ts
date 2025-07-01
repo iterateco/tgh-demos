@@ -193,6 +193,14 @@ export class OrbsAndVessels extends BaseScene {
     //.enableFilters();
 
     //this.resonanceMeter.filters.external.addGlow(0xffffff, 4, 2);
+
+    setTimeout(() => {
+      this.resonanceMeter.setWedgeLevel(0, 3);
+    }, 500);
+
+    setTimeout(() => {
+      this.resonanceMeter.setWedgeLevel(0, 2);
+    }, 2000);
   }
 
   createStats() {
