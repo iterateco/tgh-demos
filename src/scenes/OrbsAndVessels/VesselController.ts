@@ -180,7 +180,7 @@ export class VesselController extends SceneController {
   }
 }
 
-class Vessel extends Phaser.GameObjects.Container {
+export class Vessel extends Phaser.GameObjects.Container {
   entity: VesselEntity;
   blur: Phaser.GameObjects.Image;
   base: Phaser.GameObjects.Image;

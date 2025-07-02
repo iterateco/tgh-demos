@@ -59,6 +59,10 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('orb_cloud', 'textures/orb_1_cloud.png');
     this.load.image('orb_burst', 'textures/orb_1_burst.png');
     this.load.image('orb_blur', 'textures/orb_1_blur.png');
+
+    this.load.audio('select_orb', 'audio/select_orb.mp3');
+    this.load.audio('select_vessel', 'audio/select_vessel.mp3');
+    this.load.audio('attune', 'audio/attune.mp3');
   }
 
   create() {
@@ -87,57 +91,23 @@ export class OrbsAndVessels extends BaseScene {
       this.prevPointerPos = pointer.position.clone();
     });
 
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer, objects: any) => {
-      this.prevPointerPos = pointer.position.clone();
-
+    this.input.on('pointerup', (_pointer: Phaser.Input.Pointer, objects: any) => {
       const object = objects[0];
       if (!object) return;
 
       const entity = object.entity;
       if (!entity) return;
-      if (entity.type !== 'orb') return;
-      if (this.collectedOrbs.find(o => o === entity)) return;
 
-      const { emotion } = entity;
-
-      this.tweens.add({
-        targets: object.entity,
-        transitionFactor: 0,
-        ease: 'Power2',
-        duration: 300
-      });
-
-      this.collectedOrbs.push(entity);
-
-      if (this.resonanceLevels[emotion] === 3) {
-        for (let i = 0; i < this.collectedOrbs.length; i++) {
-          const orb = this.collectedOrbs[i];
-          if (orb.emotion === emotion) {
-            this.collectedOrbs.splice(i, 1);
-            this.tweens.add({
-              targets: orb,
-              transitionFactor: 1,
-              ease: 'Power2',
-              duration: 300
-            });
-            break;
-          }
-        }
+      if (entity.type === 'orb') {
+        this.handleSelectOrb(entity);
       } else {
-        this.resonanceLevels[emotion]++;
+        this.handleSelectVessel(entity);
       }
-
-      if (this.resonanceLevels[emotion] === 3) {
-        this.attunmentExpiresAt = this.game.getTime() + ATTUNEMENT_TTL;
-      }
-
-      this.updateResonances();
     });
   }
 
   createBackground() {
-    this.sky = this.add.image(0, 0, 'sky')
-      .setScrollFactor(0);
+    this.sky = this.add.image(0, 0, 'sky');
 
     this.clouds = [
       {
@@ -174,8 +144,8 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   createEntityField() {
-    const worldWidth = 10000;
-    const worldHeight = 10000;
+    const worldWidth = 6000;
+    const worldHeight = 6000;
     const worldDepth = 20000;
 
     this.entityField = new ToroidalPoissonDisc3D<FieldEntity>(worldWidth, worldHeight, worldDepth, 1000);
@@ -245,8 +215,6 @@ export class OrbsAndVessels extends BaseScene {
     const cameraX = Phaser.Math.Wrap(camera.scrollX + worldWidth / 2, 0, worldWidth);
     const cameraY = Phaser.Math.Wrap(camera.scrollY + worldHeight / 2, 0, worldHeight);
     const cameraZ = Phaser.Math.Wrap(cameraProps.z + worldDepth / 2, 0, worldDepth);
-
-    this.sky.setPosition(width / 2, height / 2 - camera.scrollY * 0.15);
 
     for (const ent of this.background) {
       ent.sprite.setTilePosition(camera.scrollX * ent.scrollRatio, camera.scrollY * ent.scrollRatio);
@@ -417,6 +385,49 @@ export class OrbsAndVessels extends BaseScene {
     this.resonanceMeter.setAttunementLife(attunementLife);
   }
 
+  handleSelectOrb(entity: OrbEntity) {
+    if (this.collectedOrbs.find(o => o === entity)) return;
+    const { emotion } = entity;
+
+    this.tweens.add({
+      targets: entity,
+      transitionFactor: 0,
+      ease: 'Power2',
+      duration: 300
+    });
+
+    this.collectedOrbs.push(entity);
+
+    if (this.resonanceLevels[emotion] === 3) {
+      for (let i = 0; i < this.collectedOrbs.length; i++) {
+        const orb = this.collectedOrbs[i];
+        if (orb.emotion === emotion) {
+          this.collectedOrbs.splice(i, 1);
+          this.tweens.add({
+            targets: orb,
+            transitionFactor: 1,
+            ease: 'Power2',
+            duration: 300
+          });
+          break;
+        }
+      }
+    } else {
+      this.resonanceLevels[emotion]++;
+    }
+
+    if (this.resonanceLevels[emotion] === 3) {
+      this.attunmentExpiresAt = this.game.getTime() + ATTUNEMENT_TTL;
+      this.sound.play('attune', { volume: 0.25 });
+    }
+    this.sound.play('select_orb', { volume: 0.25 });
+    this.updateResonances();
+  }
+
+  handleSelectVessel(entity: VesselEntity) {
+
+  }
+
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {
     const { fov } = this.cameraProps;
     const scale = fov / (z - cameraZ + fov);
@@ -449,6 +460,11 @@ export class OrbsAndVessels extends BaseScene {
 
     camera.setBounds(camBounds.x, camBounds.y, camBounds.w, camBounds.h);
 
-    this.sky.setDisplaySize(Math.max(width, BG_SIZE.width), camBounds.h * 0.25);
+    const skyH = Math.max(height, BG_SIZE.height);
+    this.sky
+      .setDisplaySize(Math.max(width, BG_SIZE.width), skyH)
+      .setPosition(width / 2, height / 2)
+      .setScrollFactor(0, ((skyH - height) / camBounds.h));
+
   }
 }
