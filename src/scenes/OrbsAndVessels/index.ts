@@ -174,8 +174,8 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   createEntityField() {
-    const worldWidth = 5000;
-    const worldHeight = 5000;
+    const worldWidth = 10000;
+    const worldHeight = 10000;
     const worldDepth = 20000;
 
     this.entityField = new ToroidalPoissonDisc3D<FieldEntity>(worldWidth, worldHeight, worldDepth, 1000);
@@ -246,7 +246,7 @@ export class OrbsAndVessels extends BaseScene {
     const cameraY = Phaser.Math.Wrap(camera.scrollY + worldHeight / 2, 0, worldHeight);
     const cameraZ = Phaser.Math.Wrap(cameraProps.z + worldDepth / 2, 0, worldDepth);
 
-    this.sky.setPosition(width / 2, height / 2 - camera.scrollY * 0.1);
+    this.sky.setPosition(width / 2, height / 2 - camera.scrollY * 0.15);
 
     for (const ent of this.background) {
       ent.sprite.setTilePosition(camera.scrollX * ent.scrollRatio, camera.scrollY * ent.scrollRatio);
@@ -279,55 +279,53 @@ export class OrbsAndVessels extends BaseScene {
 
     const renderItems = [];
     const renderedEntities: Set<FieldEntity> = new Set();
-    const dy = 0;
+    const dy = 0, dx = 0;
     const margin = 100;
 
     for (const c of circles) {
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dz = -1; dz <= 1; dz++) {
-          const wx = c.x + dx * worldWidth;
-          const wy = c.y + dy * worldHeight;
-          const wz = c.z + dz * worldDepth;
+      for (let dz = -1; dz <= 1; dz++) {
+        const wx = c.x + dx * worldWidth;
+        const wy = c.y + dy * worldHeight;
+        const wz = c.z + dz * worldDepth;
 
-          const dzFromCamera = wz - cameraZ;
-          if (dzFromCamera < 0 || dzFromCamera > cameraProps.far) continue;
+        const dzFromCamera = wz - cameraZ;
+        if (dzFromCamera < 0 || dzFromCamera > cameraProps.far) continue;
 
-          const { entity } = c;
-          const { x, y, scale } = this.project3DTo2D(wx, wy, wz, cameraX, cameraY, cameraZ);
-          const r = entity.r * scale;
+        const { entity } = c;
+        const { x, y, scale } = this.project3DTo2D(wx, wy, wz, cameraX, cameraY, cameraZ);
+        const r = entity.r * scale;
 
-          if (
-            x + r >= -margin && x - r <= width + margin &&
-            y + r >= -margin && y - r <= height + margin
-          ) {
-            let alpha = 1;
+        if (
+          x + r >= -margin && x - r <= width + margin &&
+          y + r >= -margin && y - r <= height + margin
+        ) {
+          let alpha = 1;
 
-            if (dzFromCamera < nearFadeStart || dzFromCamera > farFadeEnd) {
-              alpha = 0;
-            } else if (dzFromCamera < nearFadeEnd) {
-              // Near
-              const t = (dzFromCamera - nearFadeStart) / (nearFadeEnd - nearFadeStart);
-              alpha = Math.pow(t, 2); // ease-in
-            } else if (dzFromCamera > farFadeStart) {
-              // Far
-              const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
-              alpha = Math.pow(1 - t, 1.5); // ease-out
-            } else {
-              // Fully visible between nearFadeEnd and farFadeStart
-              alpha = 1;
-            }
-
-            renderedEntities.add(entity);
-
-            renderItems.push({
-              entity,
-              x,
-              y,
-              scale: r * .0075,
-              alpha,
-              depth: 100000 - wz
-            });
+          if (dzFromCamera < nearFadeStart || dzFromCamera > farFadeEnd) {
+            alpha = 0;
+          } else if (dzFromCamera < nearFadeEnd) {
+            // Near
+            const t = (dzFromCamera - nearFadeStart) / (nearFadeEnd - nearFadeStart);
+            alpha = Math.pow(t, 2); // ease-in
+          } else if (dzFromCamera > farFadeStart) {
+            // Far
+            const t = (dzFromCamera - farFadeStart) / (farFadeEnd - farFadeStart);
+            alpha = Math.pow(1 - t, 1.5); // ease-out
+          } else {
+            // Fully visible between nearFadeEnd and farFadeStart
+            alpha = 1;
           }
+
+          renderedEntities.add(entity);
+
+          renderItems.push({
+            entity,
+            x,
+            y,
+            scale: r * .0075,
+            alpha,
+            depth: 100000 - wz
+          });
         }
       }
     }
@@ -435,20 +433,22 @@ export class OrbsAndVessels extends BaseScene {
     // const scaleY = height / BG_SIZE.height;
     // const scale = Math.max(scaleX, scaleY);
     const camera = this.cameras.main;
-    const { worldHeight } = this.entityField;
-
-    this.sky.setDisplaySize(Math.max(width, BG_SIZE.width), height * 1.5);
+    const { worldWidth, worldHeight } = this.entityField;
 
     for (const ent of this.background) {
       ent.sprite.setSize(width * 2, height * 2);
       ent.sprite.setOrigin(0, 0);
     }
 
-    camera.setBounds(
-      -Infinity,
-      -(worldHeight / 2 - height),
-      Infinity,
-      (worldHeight - height),
-    );
+    const camBounds = {
+      x: -(worldWidth / 2 - width),
+      y: -(worldHeight / 2 - height),
+      w: (worldWidth - width),
+      h: (worldHeight - height),
+    };
+
+    camera.setBounds(camBounds.x, camBounds.y, camBounds.w, camBounds.h);
+
+    this.sky.setDisplaySize(Math.max(width, BG_SIZE.width), camBounds.h * 0.25);
   }
 }
