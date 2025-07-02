@@ -123,9 +123,9 @@ export class OrbsAndVessels extends BaseScene {
             break;
           }
         }
+      } else {
+        this.resonanceLevels[emotion]++;
       }
-
-      this.resonanceLevels[emotion]++;
 
       if (this.resonanceLevels[emotion] === 3) {
         this.attunmentExpiresAt = this.game.getTime() + ATTUNEMENT_TTL;
