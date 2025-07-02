@@ -4,10 +4,11 @@ import { BaseScene } from '../BaseScene';
 import { Orb, OrbController } from './OrbController';
 import { ResonanceMeter, ResonanceMeterProps } from './ResonanceMeter';
 import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
-import { FieldEntity, OrbEntity, VesselEntity } from './types';
+import { EMOTION_KEYS, EMOTIONS, FieldEntity, OrbEntity, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
 const BG_SIZE = { width: 1024, height: 1024 };
+const ATTUNEMENT_TTL = 20_000;
 
 export class OrbsAndVessels extends BaseScene {
   cameraProps = {
@@ -28,6 +29,9 @@ export class OrbsAndVessels extends BaseScene {
 
   vesselController: VesselController;
   orbController: OrbController;
+
+  attunmentExpiresAt?: number;
+  resonanceLevels: { [key: string]: number } = {};
   resonanceMeter: ResonanceMeter;
 
   collectedOrbs: OrbEntity[] = [];
@@ -94,7 +98,7 @@ export class OrbsAndVessels extends BaseScene {
       if (entity.type !== 'orb') return;
       if (this.collectedOrbs.find(o => o === entity)) return;
 
-      this.collectedOrbs.push(entity);
+      const { emotion } = entity;
 
       this.tweens.add({
         targets: object.entity,
@@ -103,18 +107,31 @@ export class OrbsAndVessels extends BaseScene {
         duration: 300
       });
 
-      if (this.collectedOrbs.length > 3) {
-        const toRestore = this.collectedOrbs[0];
-        this.tweens.add({
-          targets: toRestore,
-          transitionFactor: 1,
-          ease: 'Power2',
-          duration: 300
-        });
-        this.collectedOrbs = this.collectedOrbs.slice(1);
+      this.collectedOrbs.push(entity);
+
+      if (this.resonanceLevels[emotion] === 3) {
+        for (let i = 0; i < this.collectedOrbs.length; i++) {
+          const orb = this.collectedOrbs[i];
+          if (orb.emotion === emotion) {
+            this.collectedOrbs.splice(i, 1);
+            this.tweens.add({
+              targets: orb,
+              transitionFactor: 1,
+              ease: 'Power2',
+              duration: 300
+            });
+            break;
+          }
+        }
       }
 
-      this.updateVesselResonances();
+      this.resonanceLevels[emotion]++;
+
+      if (this.resonanceLevels[emotion] === 3) {
+        this.attunmentExpiresAt = this.game.getTime() + ATTUNEMENT_TTL;
+      }
+
+      this.updateResonances();
     });
   }
 
@@ -166,17 +183,15 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   createResonanceMeter() {
+    for (const key of EMOTION_KEYS) {
+      this.resonanceLevels[key] = 0;
+    }
+
     const props: ResonanceMeterProps = {
-      attunementLife: 0.4,
-      wedges: [
-        { color: 0xE23B3B, level: 2 },
-        { color: 0xD1B757, level: 3 },
-        { color: 0x57D157, level: 1 },
-        { color: 0x57CDD1, level: 0 },
-        { color: 0x5782D1, level: 1 },
-        { color: 0x7057D1, level: 0 },
-        { color: 0xD157B3, level: 3 }
-      ]
+      attunementLife: 0,
+      wedges: Object.entries(this.resonanceLevels).map(([emotion, level]) => {
+        return { color: EMOTIONS[emotion], level };
+      })
     };
     // const props: ResonanceMeterProps = {
     //   attunementLife: 0.5,
@@ -186,21 +201,10 @@ export class OrbsAndVessels extends BaseScene {
     //   }))
     // };
 
-    this.resonanceMeter = new ResonanceMeter(this, 120, 120, props);
+    this.resonanceMeter = new ResonanceMeter(this, 80, 80, props);
     this.resonanceMeter
       .setDepth(100000)
       .setScrollFactor(0);
-    //.enableFilters();
-
-    //this.resonanceMeter.filters.external.addGlow(0xffffff, 4, 2);
-
-    setTimeout(() => {
-      this.resonanceMeter.setWedgeLevel(0, 3);
-    }, 500);
-
-    setTimeout(() => {
-      this.resonanceMeter.setWedgeLevel(0, 2);
-    }, 2000);
   }
 
   createStats() {
@@ -356,6 +360,31 @@ export class OrbsAndVessels extends BaseScene {
       }
     }
 
+    if (this.attunmentExpiresAt && time >= this.attunmentExpiresAt) {
+      this.attunmentExpiresAt = undefined;
+
+      for (const entity of this.collectedOrbs) {
+        this.tweens.add({
+          targets: entity,
+          transitionFactor: 1,
+          ease: 'Power2',
+          duration: 300
+        });
+      }
+
+      this.collectedOrbs.length = 0;
+
+      for (const key of EMOTION_KEYS) {
+        this.resonanceLevels[key] = 0;
+      }
+
+      this.updateResonances();
+    }
+
+    const expiresAt = this.attunmentExpiresAt ?? time;
+    const attunementLife = (expiresAt - time) / ATTUNEMENT_TTL;
+    this.resonanceMeter.setAttunementLife(attunementLife);
+
     let text = `FPS: ${this.game.loop.actualFps}`;
     // text += `\nEntities: ${renderItems.length}`;
     text += `\nActive Orbs: ${this.orbController.sprites.countActive(true)}`;
@@ -366,7 +395,7 @@ export class OrbsAndVessels extends BaseScene {
     this.fpsText.setText(text);
   }
 
-  updateVesselResonances() {
+  updateResonances() {
     for (const vessel of this.vesselController.entities) {
       if (vessel.locked) {
         vessel.resonance = 0;
@@ -381,6 +410,13 @@ export class OrbsAndVessels extends BaseScene {
       }
       vessel.targetResonance = Math.pow(sum / 3, 2);
     };
+
+    const wedgeLevels = Object.values(this.resonanceLevels);
+    this.resonanceMeter.tweenWedgeLevels(wedgeLevels);
+
+    const expiresAt = this.attunmentExpiresAt ?? this.game.getTime();
+    const attunementLife = (expiresAt - this.game.getTime()) / ATTUNEMENT_TTL;
+    this.resonanceMeter.setAttunementLife(attunementLife);
   }
 
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {

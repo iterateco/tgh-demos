@@ -15,12 +15,16 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
 
   private readonly centerHoleRadius = 20;
   private readonly segmentCount = 3;
-  private readonly outerRadius = 100;
+  private readonly outerRadius = 60;
   private readonly segmentGap = 2;
   private readonly wedgeGapAngle = Phaser.Math.DegToRad(2);
 
   private segmentSprites: Phaser.GameObjects.Sprite[][] = [];
   private wedgeRTKey: string = 'resonance-wedge-white';
+
+  private attunementCircle!: Phaser.GameObjects.Graphics;
+  private attunementTween?: Phaser.Tweens.Tween;
+  private attunementDisplayed: number = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, props: ResonanceMeterProps) {
     super(scene, x, y);
@@ -29,6 +33,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
 
     this.createWhiteWedgeTexture();
     this.createSprites();
+    this.createAttunementCircle();
 
     scene.add.existing(this);
   }
@@ -127,10 +132,68 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     }
   }
 
+  private createAttunementCircle() {
+    if (this.attunementCircle) {
+      this.attunementCircle.destroy();
+    }
+    this.attunementCircle = this.scene.add.graphics();
+    this.add(this.attunementCircle);
+    this.attunementDisplayed = this.props.attunementLife;
+    this.drawAttunementCircle(this.attunementDisplayed);
+  }
+
+  private drawAttunementCircle(fraction: number) {
+    const radius = this.outerRadius + 6;
+    const thickness = 4;
+    const startAngle = -Math.PI / 2;
+    const endAngle = startAngle + Math.PI * 2 * fraction;
+
+    this.attunementCircle.clear();
+    this.attunementCircle.lineStyle(thickness, 0xffffff, 1);
+
+    if (fraction > 0) {
+      this.attunementCircle.beginPath();
+      this.attunementCircle.arc(0, 0, radius, startAngle, endAngle, false);
+      this.attunementCircle.strokePath();
+    }
+  }
+
+  public setAttunementLife(newValue: number) {
+    this.drawAttunementCircle(newValue);
+    this.props.attunementLife = newValue;
+  }
+
+  /**
+   * Tween the attunementLife value and animate the attunement circle.
+   * @param newValue New attunementLife value (0-1)
+   * @param duration Tween duration in ms (default 300)
+   */
+  // public tweenAttunementLife(newValue: number, duration: number = 300) {
+  //   if (this.attunementTween) {
+  //     this.attunementTween.stop();
+  //   }
+  //   const prev = this.attunementDisplayed;
+  //   this.attunementTween = this.scene.tweens.addCounter({
+  //     from: prev,
+  //     to: newValue,
+  //     duration,
+  //     onUpdate: tween => {
+  //       this.attunementDisplayed = tween.getValue();
+  //       this.drawAttunementCircle(this.attunementDisplayed);
+  //     },
+  //     onComplete: () => {
+  //       this.attunementDisplayed = newValue;
+  //       this.drawAttunementCircle(this.attunementDisplayed);
+  //     }
+  //   });
+  //   this.props.attunementLife = newValue;
+  // }
+
   public updateData(newData: ResonanceMeterProps): void {
     this.props = newData;
     this.createWhiteWedgeTexture();
     this.createSprites();
+    this.createAttunementCircle();
     // Optionally update attunement meter (not shown here)
   }
 
@@ -175,82 +238,87 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     gfx.fillPath();
   }
 
+
   /**
-   * Set the level of a wedge and pulse newly activated segments.
-   * @param wedgeIndex Index of the wedge to update
-   * @param newLevel New level (0-3)
+   * Tween all wedge levels to new values, animating color/alpha for changed segments.
+   * @param newLevels Array of new levels for each wedge (length must match wedges)
    */
-  public setWedgeLevel(wedgeIndex: number, newLevel: number) {
-    const wedge = this.props.wedges[wedgeIndex];
-    if (!wedge) return;
+  public tweenWedgeLevels(newLevels: number[]) {
+    if (newLevels.length !== this.props.wedges.length) return;
 
-    const prevLevel = wedge.level;
-    if (newLevel === prevLevel) return;
+    for (let w = 0; w < this.props.wedges.length; w++) {
+      const wedge = this.props.wedges[w];
+      const prevLevel = wedge.level;
+      const newLevel = newLevels[w];
 
-    wedge.level = newLevel;
+      if (prevLevel === newLevel) continue;
 
-    for (let level = 0; level < this.segmentCount; level++) {
-      const sprite = this.segmentSprites[wedgeIndex][level];
-      const isActive = level < newLevel;
-      const wasActive = level < prevLevel;
-      const activeTint = wedge.color;
-      const inactiveTint = Phaser.Display.Color.IntegerToColor(0x888888);
+      wedge.level = newLevel;
 
-      // Animate color change
-      if (isActive && !wasActive) {
-        // Fade in to active color and pulse
-        this.scene.tweens.addCounter({
-          from: 0,
-          to: 1,
-          duration: 180,
-          onUpdate: tween => {
-            const v = tween.getValue();
-            const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
-              inactiveTint,
-              Phaser.Display.Color.IntegerToColor(activeTint),
-              1,
-              v
-            );
-            sprite.setTint(Phaser.Display.Color.GetColor(tint.r, tint.g, tint.b));
-          }
-        });
+      for (let level = 0; level < this.segmentCount; level++) {
+        const sprite = this.segmentSprites[w][level];
+        const isActive = level < newLevel;
+        const wasActive = level < prevLevel;
+        const activeTint = wedge.color;
+        const inactiveTint = Phaser.Display.Color.IntegerToColor(0x888888);
 
-        // Center the bounce on the segment by scaling from 1 to 1.25 and back, not from current scale
-        sprite.setDepth(999999);
+        if (isActive && !wasActive) {
+          // Fade in to active color and alpha
+          this.scene.tweens.addCounter({
+            from: 0,
+            to: 1,
+            duration: 180,
+            onUpdate: tween => {
+              const v = tween.getValue();
+              const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
+                inactiveTint,
+                Phaser.Display.Color.IntegerToColor(activeTint),
+                1,
+                v
+              );
+              sprite.setTint(Phaser.Display.Color.GetColor(tint.r, tint.g, tint.b));
+              sprite.setAlpha(0.5 + (v * 0.5));
+            }
+          });
 
-        const rtScale = 2;
-        const rtSize = (this.outerRadius * 2 + 20) * rtScale;
-        const displaySize = this.outerRadius * 2 + 20;
-        const scale = displaySize / rtSize;
-
-        this.scene.tweens.add({
-          targets: sprite,
-          scale: { from: scale, to: scale * 1.05 },
-          duration: 120,
-          yoyo: true,
-          repeat: 1,
-          ease: 'Sine.easeInOut'
-        });
-      } else if (!isActive && wasActive) {
-        // Fade out to inactive color
-        this.scene.tweens.addCounter({
-          from: 0,
-          to: 1,
-          duration: 180,
-          onUpdate: tween => {
-            const v = tween.getValue();
-            const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
-              Phaser.Display.Color.IntegerToColor(activeTint),
-              inactiveTint,
-              1,
-              v
-            );
-            sprite.setTint(Phaser.Display.Color.GetColor(tint.r, tint.g, tint.b));
-          }
-        });
-      } else {
-        // Set color immediately
-        sprite.setTint(isActive ? activeTint : inactiveTint.color);
+          // Pulse effect
+          // sprite.setDepth(999999);
+          // const rtScale = 2;
+          // const rtSize = (this.outerRadius * 2 + 20) * rtScale;
+          // const displaySize = this.outerRadius * 2 + 20;
+          // const scale = displaySize / rtSize;
+          // this.scene.tweens.add({
+          //   targets: sprite,
+          //   scale: { from: scale, to: scale * 1.05 },
+          //   duration: 120,
+          //   yoyo: true,
+          //   repeat: 1,
+          //   ease: 'Sine.easeInOut',
+          //   onComplete: () => sprite.setDepth(0)
+          // });
+        } else if (!isActive && wasActive) {
+          // Fade out to inactive color and alpha
+          this.scene.tweens.addCounter({
+            from: 0,
+            to: 1,
+            duration: 180,
+            onUpdate: tween => {
+              const v = tween.getValue();
+              const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
+                Phaser.Display.Color.IntegerToColor(activeTint),
+                inactiveTint,
+                1,
+                v
+              );
+              sprite.setTint(Phaser.Display.Color.GetColor(tint.r, tint.g, tint.b));
+              sprite.setAlpha(1 - (v * 0.5));
+            }
+          });
+        } else {
+          // Set color/alpha immediately
+          sprite.setTint(isActive ? activeTint : inactiveTint.color);
+          sprite.setAlpha(isActive ? 1 : 0.5);
+        }
       }
     }
   }

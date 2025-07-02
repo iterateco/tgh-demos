@@ -161,7 +161,7 @@ export class OrbController extends SceneController {
 
     sprite.trail
       .setDepth(depth - 1)
-      .setParticleTint(color.color)
+      .setParticleTint(color)
       .setAlpha(0.75 * alpha * entity.transitionFactor)
       .setVisible(true)
       .setActive(true);

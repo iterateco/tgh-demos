@@ -158,8 +158,8 @@ export class VesselController extends SceneController {
       .setAlpha(baseAlpha * (0.5 + resonance * 0.5));
 
     sprite.glow
-      .setTint(c.clone().lighten(50).color)
-      .setAlpha(baseAlpha * interactionFactor);
+      //.setTint(c.clone().lighten(50).color)
+      .setAlpha(baseAlpha * interactionFactor * 0.6);
 
     sprite.icon.setAlpha(entity.locked ? baseAlpha : 0);
 
