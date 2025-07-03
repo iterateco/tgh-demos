@@ -147,7 +147,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
   }
 
   private drawAttunementCircle(fraction: number) {
-    const radius = this.outerRadius + 5;
+    const radius = this.outerRadius + 6;
     const thickness = 3;
     const startAngle = -Math.PI / 2;
     const endAngle = startAngle + Math.PI * 2 * fraction;
