@@ -63,6 +63,7 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('orb_cloud', 'textures/orb_1_cloud.png');
     this.load.image('orb_burst', 'textures/orb_1_burst.png');
     this.load.image('orb_blur', 'textures/orb_1_blur.png');
+    this.load.image('attunement_glow', 'textures/attunement_glow.png');
 
     this.load.audio('select_orb', 'audio/select_orb.mp3');
     this.load.audio('select_vessel', 'audio/select_vessel.mp3');

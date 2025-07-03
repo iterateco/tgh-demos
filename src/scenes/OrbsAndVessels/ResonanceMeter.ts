@@ -23,8 +23,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
   private wedgeRTKey: string = 'resonance-wedge-white';
 
   private attunementCircle!: Phaser.GameObjects.Graphics;
-  private attunementTween?: Phaser.Tweens.Tween;
-  private attunementDisplayed: number = 0;
+  private attunementGlow!: Phaser.GameObjects.Image;
 
   constructor(scene: Phaser.Scene, x: number, y: number, props: ResonanceMeterProps) {
     super(scene, x, y);
@@ -32,8 +31,8 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     this.props = props;
 
     this.createWhiteWedgeTexture();
-    this.createSprites();
-    this.createAttunementCircle();
+    this.createWedgeSprites();
+    this.createAttunementObjects();
 
     scene.add.existing(this);
   }
@@ -91,7 +90,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     }
   }
 
-  private createSprites() {
+  private createWedgeSprites() {
     this.segmentSprites.flat().forEach(sprite => sprite.destroy());
     this.segmentSprites = [];
 
@@ -132,34 +131,42 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     }
   }
 
-  private createAttunementCircle() {
+  private createAttunementObjects() {
     if (this.attunementCircle) {
       this.attunementCircle.destroy();
     }
     this.attunementCircle = this.scene.add.graphics();
+
     this.add(this.attunementCircle);
-    this.attunementDisplayed = this.props.attunementLife;
-    this.drawAttunementCircle(this.attunementDisplayed);
+    this.drawAttunementCircle(this.props.attunementLife);
+
+    this.attunementGlow = this.scene.add.image(0, 0, 'attunement_glow')
+      .setTint(0xFFE3BF)
+      .setAlpha(this.props.attunementLife);
+    this.add(this.attunementGlow);
   }
 
   private drawAttunementCircle(fraction: number) {
-    const radius = this.outerRadius + 6;
-    const thickness = 4;
+    const radius = this.outerRadius + 5;
+    const thickness = 3;
     const startAngle = -Math.PI / 2;
     const endAngle = startAngle + Math.PI * 2 * fraction;
 
     this.attunementCircle.clear();
-    this.attunementCircle.lineStyle(thickness, 0xffffff, 1);
+    this.attunementCircle.lineStyle(thickness, 0xFFA65E, 1);
 
     if (fraction > 0) {
       this.attunementCircle.beginPath();
       this.attunementCircle.arc(0, 0, radius, startAngle, endAngle, false);
       this.attunementCircle.strokePath();
     }
+
+    this.attunementCircle.setAlpha(0.25 + fraction * 0.5);
   }
 
   public setAttunementLife(newValue: number) {
     this.drawAttunementCircle(newValue);
+    this.attunementGlow.setAlpha(newValue);
     this.props.attunementLife = newValue;
   }
 
@@ -192,8 +199,8 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
   public updateData(newData: ResonanceMeterProps): void {
     this.props = newData;
     this.createWhiteWedgeTexture();
-    this.createSprites();
-    this.createAttunementCircle();
+    this.createWedgeSprites();
+    this.createAttunementObjects();
     // Optionally update attunement meter (not shown here)
   }
 
