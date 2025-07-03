@@ -141,7 +141,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
     this.drawAttunementCircle(this.props.attunementLife);
 
     this.attunementGlow = this.scene.add.image(0, 0, 'attunement_glow')
-      .setTint(0xFFE3BF)
+      .setTint(0xFFF0DB)
       .setAlpha(this.props.attunementLife);
     this.add(this.attunementGlow);
   }
@@ -161,12 +161,28 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
       this.attunementCircle.strokePath();
     }
 
-    this.attunementCircle.setAlpha(0.25 + fraction * 0.5);
+    this.attunementCircle.setAlpha(0.1 + fraction * 0.9);
   }
 
   public setAttunementLife(newValue: number) {
     this.drawAttunementCircle(newValue);
-    this.attunementGlow.setAlpha(newValue);
+
+    if (newValue !== this.props.attunementLife) {
+      if (newValue > this.props.attunementLife) {
+        this.scene.tweens.add({
+          targets: this.attunementGlow,
+          alpha: { from: 0, to: 1 },
+          duration: 500
+        });
+      } else if (newValue === 0) {
+        this.scene.tweens.add({
+          targets: this.attunementGlow,
+          alpha: { from: 1, to: 0 },
+          duration: 500
+        });
+      }
+    }
+
     this.props.attunementLife = newValue;
   }
 
