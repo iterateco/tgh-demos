@@ -7,7 +7,7 @@ import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
 import { EMOTION_KEYS, EMOTIONS, FieldEntity, OrbEntity, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
-const BG_SIZE = { width: 1024, height: 1024 };
+const SKY_SIZE = { width: 1024, height: 1024 };
 const ATTUNEMENT_TTL = 20_000;
 
 export class OrbsAndVessels extends BaseScene {
@@ -24,6 +24,8 @@ export class OrbsAndVessels extends BaseScene {
   prevPointerPos?: Phaser.Math.Vector2;
 
   sky!: Phaser.GameObjects.Image;
+  sun!: Phaser.GameObjects.Image;
+  moon!: Phaser.GameObjects.Image;
   clouds!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable & { accel: number })[];
   background!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable)[];
 
@@ -49,6 +51,8 @@ export class OrbsAndVessels extends BaseScene {
     this.load.image('sky', 'textures/sky_1.png');
     this.load.image('stars_1', 'textures/stars_1.png');
     this.load.image('stars_2', 'textures/stars_2.png');
+    this.load.image('sun', 'textures/sun.png');
+    this.load.image('moon', 'textures/moon.png');
     this.load.image('clouds_1', 'textures/clouds_1.png');
     this.load.image('clouds_2', 'textures/clouds_2.png');
     this.load.image('vessel_blur', 'textures/heart_1_glass_blur.png');
@@ -109,6 +113,28 @@ export class OrbsAndVessels extends BaseScene {
   createBackground() {
     this.sky = this.add.image(0, 0, 'sky');
 
+    const stars = [
+      {
+        sprite: this.add.tileSprite(0, 0, 0, 0, 'stars_1')
+          .setScale(0.5)
+          .setScrollFactor(0),
+        scrollRatio: 0.05
+      },
+      {
+        sprite: this.add.tileSprite(0, 0, 0, 0, 'stars_2')
+          .setScale(0.5)
+          .setScrollFactor(0),
+        scrollRatio: 0.07
+      }
+    ];
+
+    this.sun = this.add.image(0, 0, 'sun');
+
+    this.moon = this.add.image(0, 0, 'moon')
+      .setScale(0.5)
+      .setAlpha(0.8)
+      .setScrollFactor(0.08);
+
     this.clouds = [
       {
         sprite: this.add.tileSprite(0, 0, 0, 0, 'clouds_1')
@@ -127,18 +153,7 @@ export class OrbsAndVessels extends BaseScene {
     ];
 
     this.background = [
-      {
-        sprite: this.add.tileSprite(0, 0, 0, 0, 'stars_1')
-          .setScale(0.5)
-          .setScrollFactor(0),
-        scrollRatio: 0.13
-      },
-      {
-        sprite: this.add.tileSprite(0, 0, 0, 0, 'stars_2')
-          .setScale(0.5)
-          .setScrollFactor(0),
-        scrollRatio: 0.14
-      },
+      ...stars,
       ...this.clouds
     ];
   }
@@ -425,7 +440,7 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   handleSelectVessel(entity: VesselEntity) {
-
+    this.sound.play('select_vessel', { volume: 0.25 });
   }
 
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {
@@ -440,16 +455,8 @@ export class OrbsAndVessels extends BaseScene {
 
   resize() {
     const { width, height } = this.scale;
-    // const scaleX = width / BG_SIZE.width;
-    // const scaleY = height / BG_SIZE.height;
-    // const scale = Math.max(scaleX, scaleY);
     const camera = this.cameras.main;
     const { worldWidth, worldHeight } = this.entityField;
-
-    for (const ent of this.background) {
-      ent.sprite.setSize(width * 2, height * 2);
-      ent.sprite.setOrigin(0, 0);
-    }
 
     const camBounds = {
       x: -(worldWidth / 2 - width),
@@ -460,11 +467,22 @@ export class OrbsAndVessels extends BaseScene {
 
     camera.setBounds(camBounds.x, camBounds.y, camBounds.w, camBounds.h);
 
-    const skyH = Math.max(height, BG_SIZE.height);
+    const skyH = Math.max(SKY_SIZE.height, height * 1.25);
+    const skyScrollFactorY = (skyH - height) / camBounds.h;
     this.sky
-      .setDisplaySize(Math.max(width, BG_SIZE.width), skyH)
+      .setDisplaySize(Math.max(width, SKY_SIZE.width), skyH)
       .setPosition(width / 2, height / 2)
-      .setScrollFactor(0, ((skyH - height) / camBounds.h));
+      .setScrollFactor(0, skyScrollFactorY);
 
+    this.sun
+      .setPosition(width / 2, (height / 2) + (skyH / 2) - 85)
+      .setScrollFactor(0.05, skyScrollFactorY);
+
+    this.moon.setPosition(width - 120, -70);
+
+    for (const ent of this.background) {
+      ent.sprite.setSize(width * 2, height * 2);
+      ent.sprite.setOrigin(0, 0);
+    }
   }
 }
