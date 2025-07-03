@@ -52,7 +52,6 @@ export class VesselField extends BaseScene {
 
   preload() {
     super.preload();
-    this.load.image('sky', 'textures/sky.png');
     this.load.image('stars_1', 'textures/stars_1.png');
     this.load.image('stars_2', 'textures/stars_2.png');
     this.load.image('sun', 'textures/sun.png');
@@ -89,6 +88,7 @@ export class VesselField extends BaseScene {
     const camera = this.cameras.main;
     camera.centerOn(0, 0);
 
+    this.createSky();
     this.createBackground();
     this.createEntityField();
     this.createResonanceMeter();
@@ -130,9 +130,35 @@ export class VesselField extends BaseScene {
     app.loadModal('/components/intro');
   }
 
-  createBackground() {
-    this.sky = this.add.image(0, 0, 'sky');
+  createSky() {
+    const { width, height } = SKY_SIZE;
 
+    const canvasTexture = this.textures.createCanvas('sky', width, height);
+    const ctx = canvasTexture.getContext();
+
+    // Create radial gradient
+    const centerX = width / 2;
+    const radius = width;
+
+    const gradient = ctx.createRadialGradient(centerX, height, 0, centerX, height, radius);
+
+    gradient.addColorStop(0.0, '#FF9EA2');
+    gradient.addColorStop(0.40, '#2B7A88');
+    gradient.addColorStop(0.78, '#06334B');
+    gradient.addColorStop(1.0, '#021328');
+
+    // Fill canvas with gradient
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Mark canvas as dirty so Phaser updates the texture
+    canvasTexture.refresh();
+
+    // Add the image to the scene
+    this.sky = this.add.image(0, 0, 'sky');
+  }
+
+  createBackground() {
     const stars = [
       {
         sprite: this.add.tileSprite(0, 0, 0, 0, 'stars_1')
@@ -483,7 +509,7 @@ export class VesselField extends BaseScene {
     const skyH = Math.max(SKY_SIZE.height, height * 1.25);
     const skyScrollFactorY = (skyH - height) / camBounds.h;
     this.sky
-      .setDisplaySize(Math.max(width, SKY_SIZE.width), skyH)
+      .setDisplaySize(Math.max(width, SKY_SIZE.width * 1.75), skyH)
       .setPosition(width / 2, height / 2)
       .setScrollFactor(0, skyScrollFactorY);
 
