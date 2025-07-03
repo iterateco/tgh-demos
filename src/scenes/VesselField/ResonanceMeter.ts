@@ -292,7 +292,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
             to: 1,
             duration: 180,
             onUpdate: tween => {
-              const v = tween.getValue()!;
+              const v = tween.getValue();
               const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
                 inactiveTint,
                 Phaser.Display.Color.IntegerToColor(activeTint),
@@ -326,7 +326,7 @@ export class ResonanceMeter extends Phaser.GameObjects.Container {
             to: 1,
             duration: 180,
             onUpdate: tween => {
-              const v = tween.getValue()!;
+              const v = tween.getValue();
               const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
                 Phaser.Display.Color.IntegerToColor(activeTint),
                 inactiveTint,

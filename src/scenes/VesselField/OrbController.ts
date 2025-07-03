@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
+import DataProvider from './DataProvider';
 import { SceneController } from './SceneController';
-import { EMOTION_KEYS, EMOTIONS, FieldEntity, OrbEntity } from './types';
+import { FieldEntity, OrbEntity } from './types';
 
 const MOVE_CONFIG = {
   x: {
@@ -23,8 +24,8 @@ export class OrbController extends SceneController {
 
   sprites!: Phaser.GameObjects.Group;
 
-  constructor(scene: Phaser.Scene) {
-    super(scene);
+  constructor(scene: Phaser.Scene, dataProvider: DataProvider) {
+    super(scene, dataProvider);
 
     const nebulaShader = scene.add.shader({
       name: 'nebula_tex',
@@ -54,11 +55,14 @@ export class OrbController extends SceneController {
     this.orbRotation += 0.005;
   }
 
-  createEntity(id: number) {
+  createEntity(_id: number) {
+    const archetype = Phaser.Math.RND.pick(this.dataProvider.emotionalArchetypes);
+    const color = archetype.color;
+
     const orb: OrbEntity = {
-      id,
       type: 'orb',
-      emotion: Phaser.Math.RND.pick(EMOTION_KEYS),
+      archetype,
+      color,
       // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
       r: 120,
       prevOffset: new Phaser.Math.Vector2(),
@@ -124,8 +128,7 @@ export class OrbController extends SceneController {
   ) {
     const { alpha, depth } = params;
     const entity = params.entity as OrbEntity;
-    const { emotion, offset } = entity;
-    const color = EMOTIONS[emotion];
+    const { color, offset } = entity;
     const x = params.x + offset.x * params.scale;
     const y = params.y + offset.y * params.scale;
     const scale = params.scale * entity.transitionFactor;

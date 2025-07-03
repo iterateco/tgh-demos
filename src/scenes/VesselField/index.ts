@@ -1,16 +1,20 @@
 import * as Phaser from 'phaser';
-import { Entity, Scrollable } from '../../types';
+import { API_URL } from '../../config';
+import { ToroidalPoissonDisc3D } from '../../utils/ToroidalPoissonDisc3D';
 import { BaseScene } from '../BaseScene';
+import app from './app';
+import DataProvider from './DataProvider';
 import { Orb, OrbController } from './OrbController';
 import { ResonanceMeter, ResonanceMeterProps } from './ResonanceMeter';
-import { ToroidalPoissonDisc3D } from './ToroidalPoissonDisc3D';
-import { EMOTION_KEYS, EMOTIONS, FieldEntity, OrbEntity, VesselEntity } from './types';
+import { Entity, FieldEntity, OrbEntity, Scrollable, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 
 const SKY_SIZE = { width: 1024, height: 1024 };
 const ATTUNEMENT_TTL = 20_000;
 
-export class OrbsAndVessels extends BaseScene {
+export class VesselField extends BaseScene {
+  dataProvider!: DataProvider;
+
   cameraProps = {
     fov: 500,
     far: 3000,
@@ -40,39 +44,40 @@ export class OrbsAndVessels extends BaseScene {
 
   entityField!: ToroidalPoissonDisc3D<FieldEntity>;
 
-  fpsText!: Phaser.GameObjects.Text;
+  fpsText: Phaser.GameObjects.Text;
 
   constructor() {
-    super('orbs-and-vessels');
+    super('vessel-field');
   }
 
   preload() {
     super.preload();
-    this.load.image('sky', 'textures/sky_1.png');
+    this.load.image('sky', 'textures/sky.png');
     this.load.image('stars_1', 'textures/stars_1.png');
     this.load.image('stars_2', 'textures/stars_2.png');
     this.load.image('sun', 'textures/sun.png');
     this.load.image('moon', 'textures/moon.png');
     this.load.image('clouds_1', 'textures/clouds_1.png');
     this.load.image('clouds_2', 'textures/clouds_2.png');
-    this.load.image('vessel_blur', 'textures/heart_1_glass_blur.png');
-    this.load.image('vessel_base', 'textures/heart_1_base.png');
-    this.load.image('vessel_highlight', 'textures/heart_1_glass.png');
-    this.load.image('vessel_glow', 'textures/heart_1_glow.png');
-    this.load.image('lock', 'textures/lock_1.png');
-    this.load.image('orb_cloud', 'textures/orb_1_cloud.png');
-    this.load.image('orb_burst', 'textures/orb_1_burst.png');
-    this.load.image('orb_blur', 'textures/orb_1_blur.png');
+    this.load.image('vessel_blur', 'textures/heart_blur.png');
+    this.load.image('vessel_base', 'textures/heart_base.png');
+    this.load.image('vessel_highlight', 'textures/heart_highlight.png');
+    this.load.image('vessel_glow', 'textures/heart_glow.png');
+    this.load.image('lock', 'textures/lock.png');
     this.load.image('attunement_glow', 'textures/attunement_glow.png');
 
     this.load.audio('select_orb', 'audio/select_orb.mp3');
     this.load.audio('select_vessel', 'audio/select_vessel.mp3');
     this.load.audio('attune', 'audio/attune.mp3');
+
+    this.load.json('emotional_archetypes', `${API_URL}/emotional-archetypes`, 'data');
+    this.load.json('posts', `${API_URL}/posts`, 'data');
   }
 
   create() {
-    this.vesselController = new VesselController(this);
-    this.orbController = new OrbController(this);
+    this.dataProvider = new DataProvider(this.cache.json);
+    this.vesselController = new VesselController(this, this.dataProvider);
+    this.orbController = new OrbController(this, this.dataProvider);
 
     // this.collectedOrbs = [
     //   { variant: 3 },
@@ -87,7 +92,7 @@ export class OrbsAndVessels extends BaseScene {
     this.createBackground();
     this.createEntityField();
     this.createResonanceMeter();
-    this.createStats();
+    // this.createStats();
 
     this.scale.on('resize', this.resize, this);
     this.resize();
@@ -109,6 +114,8 @@ export class OrbsAndVessels extends BaseScene {
         this.handleSelectVessel(entity);
       }
     });
+
+    app.loadModal('/components/intro');
   }
 
   createBackground() {
@@ -169,14 +176,15 @@ export class OrbsAndVessels extends BaseScene {
   }
 
   createResonanceMeter() {
-    for (const key of EMOTION_KEYS) {
-      this.resonanceLevels[key] = 0;
+    const { emotionalArchetypes } = this.dataProvider;
+    for (const archetype of emotionalArchetypes) {
+      this.resonanceLevels[archetype.name] = 0;
     }
 
     const props: ResonanceMeterProps = {
       attunementLife: 0,
-      wedges: Object.entries(this.resonanceLevels).map(([emotion, level]) => {
-        return { color: EMOTIONS[emotion], level };
+      wedges: emotionalArchetypes.map(archetype => {
+        return { color: archetype.color, level: 0 };
       })
     };
     // const props: ResonanceMeterProps = {
@@ -356,7 +364,7 @@ export class OrbsAndVessels extends BaseScene {
 
       this.collectedOrbs.length = 0;
 
-      for (const key of EMOTION_KEYS) {
+      for (const key of Object.keys(this.resonanceLevels)) {
         this.resonanceLevels[key] = 0;
       }
 
@@ -367,26 +375,22 @@ export class OrbsAndVessels extends BaseScene {
     const attunementLife = (expiresAt - time) / ATTUNEMENT_TTL;
     this.resonanceMeter.setAttunementLife(attunementLife);
 
-    let text = `FPS: ${this.game.loop.actualFps}`;
-    // text += `\nEntities: ${renderItems.length}`;
-    text += `\nActive Orbs: ${this.orbController.sprites.countActive(true)}`;
-    text += '\nCollected Orbs:';
-    this.collectedOrbs.forEach(orb => {
-      text += `\n ${orb.emotion}`;
-    });
-    this.fpsText.setText(text);
+    if (this.fpsText) {
+      const text = `FPS: ${this.game.loop.actualFps}`;
+      this.fpsText.setText(text);
+    }
   }
 
   updateResonances() {
     for (const vessel of this.vesselController.entities) {
-      if (vessel.locked) {
+      if (vessel.post.has_response) {
         vessel.resonance = 0;
         continue;
       }
 
       let sum = 0;
       for (const orb of this.collectedOrbs) {
-        if (vessel.emotion === orb.emotion) {
+        if (vessel.color === orb.color) {
           sum += 1;
         }
       }
@@ -403,7 +407,9 @@ export class OrbsAndVessels extends BaseScene {
 
   handleSelectOrb(entity: OrbEntity) {
     if (this.collectedOrbs.find(o => o === entity)) return;
-    const { emotion } = entity;
+    const { archetype } = entity;
+
+    app.track('orb_clicked');
 
     this.tweens.add({
       targets: entity,
@@ -414,10 +420,10 @@ export class OrbsAndVessels extends BaseScene {
 
     this.collectedOrbs.push(entity);
 
-    if (this.resonanceLevels[emotion] === 3) {
+    if (this.resonanceLevels[archetype.name] === 3) {
       for (let i = 0; i < this.collectedOrbs.length; i++) {
         const orb = this.collectedOrbs[i];
-        if (orb.emotion === emotion) {
+        if (orb.archetype.name === archetype.name) {
           this.collectedOrbs.splice(i, 1);
           this.tweens.add({
             targets: orb,
@@ -429,10 +435,10 @@ export class OrbsAndVessels extends BaseScene {
         }
       }
     } else {
-      this.resonanceLevels[emotion]++;
+      this.resonanceLevels[archetype.name]++;
     }
 
-    if (this.resonanceLevels[emotion] === 3) {
+    if (this.resonanceLevels[archetype.name] === 3) {
       this.attunmentExpiresAt = this.game.getTime() + ATTUNEMENT_TTL;
       this.sound.play('attune', { volume: 0.25 });
     }
@@ -442,6 +448,9 @@ export class OrbsAndVessels extends BaseScene {
 
   handleSelectVessel(entity: VesselEntity) {
     this.sound.play('select_vessel', { volume: 0.25 });
+
+    app.track('post_clicked');
+    app.loadModal(`/components/posts/${entity.post.id}`);
   }
 
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {

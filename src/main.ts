@@ -1,12 +1,6 @@
 import * as Phaser from 'phaser';
-import { Main } from './scenes/Main';
-import { OrbsAndVessels } from './scenes/OrbsAndVessels';
-import { VesselField2D } from './scenes/VesselField2D';
-import { VesselField3D } from './scenes/VesselField3D';
-import { VesselStream } from './scenes/VesselStream';
+import { VesselField } from './scenes/VesselField';
 
-//  Find out more information about the Game Config at:
-//  https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
   width: window.innerWidth,
@@ -18,14 +12,11 @@ const config: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   seed: ['23423434348347'],
-  input: { keyboard: true },
+  input: { keyboard: false },
   scene: [
-    Main,
-    VesselField2D,
-    VesselField3D,
-    VesselStream,
-    OrbsAndVessels
+    VesselField
   ]
 };
 
-export default new Phaser.Game(config);
+const game = new Phaser.Game(config);
+(window as any).game = game;

@@ -1,4 +1,4 @@
-import { poissonDisc3D } from '../../utils/poissonDisc3D';
+import { poissonDisc3D } from './poissonDisc3D';
 
 interface Entity {
   r: number

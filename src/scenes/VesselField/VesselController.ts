@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
+import DataProvider from './DataProvider';
 import { SceneController } from './SceneController';
-import { EMOTION_KEYS, EMOTIONS, FieldEntity, VesselEntity } from './types';
+import { FieldEntity, VesselEntity } from './types';
 
 export class VesselController extends SceneController {
   entities: VesselEntity[] = [];
@@ -8,8 +9,8 @@ export class VesselController extends SceneController {
 
   resonanceScale = 1;
 
-  constructor(scene: Phaser.Scene) {
-    super(scene);
+  constructor(scene: Phaser.Scene, dataProvider: DataProvider) {
+    super(scene, dataProvider);
 
     this.createVesselEntities();
 
@@ -31,19 +32,21 @@ export class VesselController extends SceneController {
   }
 
   private createVesselEntities() {
-    for (let i = 0; i < 300; i++) {
+    for (const post of this.dataProvider.posts) {
+      const archetype = post.emotional_archetypes[0];
+      if (!archetype) continue;
+      const color = archetype.color;
+
       this.entities.push({
-        id: i,
         type: 'vessel',
-        // r: (Phaser.Math.RND.frac() * 0.6 + 0.4) * 150,
+        post,
         r: 120,
         drift: new Phaser.Math.Vector2(),
         vel: new Phaser.Math.Vector2(),
         offset: new Phaser.Math.Vector2(),
         targetResonance: 0,
         resonance: 0,
-        locked: Phaser.Math.RND.frac() > 0.8,
-        emotion: Phaser.Math.RND.pick(EMOTION_KEYS)
+        color
       });
     }
   }
@@ -123,8 +126,7 @@ export class VesselController extends SceneController {
   ) {
     const { alpha, depth } = params;
     const entity = params.entity as VesselEntity;
-    const { emotion, resonance, offset } = entity;
-    const color = EMOTIONS[emotion];
+    const { post, color, resonance, offset } = entity;
     const sprite = (this.sprites.get() as Vessel);
 
     const x = params.x + offset.x * params.scale;
@@ -161,7 +163,7 @@ export class VesselController extends SceneController {
       //.setTint(c.clone().lighten(50).color)
       .setAlpha(baseAlpha * interactionFactor * 0.6);
 
-    sprite.icon.setAlpha(entity.locked ? baseAlpha : 0);
+    sprite.icon.setAlpha(post.has_response ? baseAlpha : 0);
 
     sprite
       .setPosition(x, y)
