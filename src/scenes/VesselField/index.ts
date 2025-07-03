@@ -101,6 +101,18 @@ export class VesselField extends BaseScene {
       this.prevPointerPos = pointer.position.clone();
     });
 
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer, _objects: any) => {
+      const { cameraProps } = this;
+      const { position } = pointer;
+
+      if (pointer.isDown && this.prevPointerPos) {
+        const prevPosition = this.prevPointerPos;
+        cameraProps.velocity.x -= (position.x - prevPosition.x) * cameraProps.dragAccel;
+        cameraProps.velocity.y -= (position.y - prevPosition.y) * cameraProps.dragAccel;
+        this.prevPointerPos = position.clone();
+      }
+    });
+
     this.input.on('pointerup', (_pointer: Phaser.Input.Pointer, objects: any) => {
       const object = objects[0];
       if (!object) return;
@@ -218,16 +230,7 @@ export class VesselField extends BaseScene {
     const { width, height } = this.scale;
     const camera = this.cameras.main;
     const { cameraProps } = this;
-    const pointer = this.input.activePointer;
     const { worldWidth, worldHeight, worldDepth } = this.entityField;
-    const { position } = pointer;
-
-    if (pointer.isDown && this.prevPointerPos) {
-      const prevPosition = this.prevPointerPos;
-      cameraProps.velocity.x -= (position.x - prevPosition.x) * cameraProps.dragAccel;
-      cameraProps.velocity.y -= (position.y - prevPosition.y) * cameraProps.dragAccel;
-      this.prevPointerPos = position.clone();
-    }
 
     cameraProps.velocity.z += cameraProps.thrust;
     cameraProps.velocity.scale(cameraProps.damping);
