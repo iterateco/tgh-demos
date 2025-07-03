@@ -222,7 +222,7 @@ export class VesselField extends BaseScene {
     const { worldWidth, worldHeight, worldDepth } = this.entityField;
     const { position } = pointer;
 
-    if (pointer.isDown) {
+    if (pointer.isDown && this.prevPointerPos) {
       const prevPosition = this.prevPointerPos;
       cameraProps.velocity.x -= (position.x - prevPosition.x) * cameraProps.dragAccel;
       cameraProps.velocity.y -= (position.y - prevPosition.y) * cameraProps.dragAccel;
