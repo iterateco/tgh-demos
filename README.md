@@ -20,8 +20,9 @@ yarn dev
 
 Build for production:
 ```
-export VITE_API_URL="https://thegreathigh.com/api"
-export VITE_ASSETS_URL="..."
+export VITE_API_URL="https://app.thegreathigh.com/api"
+export VITE_ASSETS_URL="https://thegreathigh.com/game/assets"
 
 yarn build
+./deploy.sh
 ```
