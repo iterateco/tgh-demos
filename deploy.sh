@@ -1,0 +1,1 @@
+aws s3 sync ./dist/assets s3://thegreathigh.com/game/assets --delete
