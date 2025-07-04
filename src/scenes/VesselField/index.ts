@@ -127,7 +127,7 @@ export class VesselField extends BaseScene {
       }
     });
 
-    app.loadModal('/components/intro');
+    //app.loadModal('/components/intro');
   }
 
   createSky() {
