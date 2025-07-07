@@ -36,7 +36,7 @@ export class VesselField extends BaseScene {
   vesselController: VesselController;
   orbController: OrbController;
 
-  attunmentExpiresAt?: number;
+  attunementTimeRemaining = 0;
   resonanceLevels: { [key: string]: number } = {};
   resonanceMeter: ResonanceMeter;
 
@@ -379,29 +379,30 @@ export class VesselField extends BaseScene {
       }
     }
 
-    if (this.attunmentExpiresAt && time >= this.attunmentExpiresAt) {
-      this.attunmentExpiresAt = undefined;
+    if (this.attunementTimeRemaining) {
+      this.attunementTimeRemaining = Math.max(0, this.attunementTimeRemaining - delta);
 
-      for (const entity of this.collectedOrbs) {
-        this.tweens.add({
-          targets: entity,
-          transitionFactor: 1,
-          ease: 'Power2',
-          duration: 300
-        });
+      if (!this.attunementTimeRemaining) {
+        for (const entity of this.collectedOrbs) {
+          this.tweens.add({
+            targets: entity,
+            transitionFactor: 1,
+            ease: 'Power2',
+            duration: 300
+          });
+        }
+
+        this.collectedOrbs.length = 0;
+
+        for (const key of Object.keys(this.resonanceLevels)) {
+          this.resonanceLevels[key] = 0;
+        }
+
+        this.updateResonances();
       }
-
-      this.collectedOrbs.length = 0;
-
-      for (const key of Object.keys(this.resonanceLevels)) {
-        this.resonanceLevels[key] = 0;
-      }
-
-      this.updateResonances();
     }
 
-    const expiresAt = this.attunmentExpiresAt ?? time;
-    const attunementLife = (expiresAt - time) / ATTUNEMENT_TTL;
+    const attunementLife = this.attunementTimeRemaining / ATTUNEMENT_TTL;
     this.resonanceMeter.setAttunementLife(attunementLife);
 
     if (this.fpsText) {
@@ -428,10 +429,6 @@ export class VesselField extends BaseScene {
 
     const wedgeLevels = Object.values(this.resonanceLevels);
     this.resonanceMeter.tweenWedgeLevels(wedgeLevels);
-
-    const expiresAt = this.attunmentExpiresAt ?? this.game.getTime();
-    const attunementLife = (expiresAt - this.game.getTime()) / ATTUNEMENT_TTL;
-    this.resonanceMeter.setAttunementLife(attunementLife);
   }
 
   handleSelectOrb(entity: OrbEntity) {
@@ -468,7 +465,7 @@ export class VesselField extends BaseScene {
     }
 
     if (this.resonanceLevels[archetype.name] === 3) {
-      this.attunmentExpiresAt = this.game.getTime() + ATTUNEMENT_TTL;
+      this.attunementTimeRemaining = ATTUNEMENT_TTL;
       this.sound.play('attune', { volume: 0.25 });
     }
     this.sound.play('select_orb', { volume: 0.25 });
