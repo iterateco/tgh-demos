@@ -8,8 +8,8 @@ export default {
     }
   },
 
-  track(name: string) {
-    googleTag('event', name);
+  track(name: string, params?: object) {
+    googleTag('event', name, params);
   }
 };
 

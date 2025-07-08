@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { API_URL } from '../../config';
+import { colorToHexString } from '../../utils/color';
 import { ToroidalPoissonDisc3D } from '../../utils/ToroidalPoissonDisc3D';
 import { BaseScene } from '../BaseScene';
 import app from './app';
@@ -216,7 +217,7 @@ export class VesselField extends BaseScene {
   createResonanceMeter() {
     const { emotionalArchetypes } = this.dataProvider;
     for (const archetype of emotionalArchetypes) {
-      this.resonanceLevels[archetype.name] = 0;
+      this.resonanceLevels[archetype.color] = 0;
     }
 
     const props: ResonanceMeterProps = {
@@ -418,13 +419,8 @@ export class VesselField extends BaseScene {
         continue;
       }
 
-      let sum = 0;
-      for (const orb of this.collectedOrbs) {
-        if (vessel.color === orb.color) {
-          sum += 1;
-        }
-      }
-      vessel.targetResonance = Math.pow(sum / 3, 2);
+      const level = this.resonanceLevels[vessel.color];
+      vessel.targetResonance = Math.pow(level / 3, 2);
     };
 
     const wedgeLevels = Object.values(this.resonanceLevels);
@@ -433,9 +429,6 @@ export class VesselField extends BaseScene {
 
   handleSelectOrb(entity: OrbEntity) {
     if (this.collectedOrbs.find(o => o === entity)) return;
-    const { archetype } = entity;
-
-    app.track('orb_clicked');
 
     this.tweens.add({
       targets: entity,
@@ -446,29 +439,28 @@ export class VesselField extends BaseScene {
 
     this.collectedOrbs.push(entity);
 
-    if (this.resonanceLevels[archetype.name] === 3) {
-      for (let i = 0; i < this.collectedOrbs.length; i++) {
-        const orb = this.collectedOrbs[i];
-        if (orb.archetype.name === archetype.name) {
-          this.collectedOrbs.splice(i, 1);
-          this.tweens.add({
-            targets: orb,
-            transitionFactor: 1,
-            ease: 'Power2',
-            duration: 300
-          });
-          break;
-        }
-      }
-    } else {
-      this.resonanceLevels[archetype.name]++;
+    if (this.resonanceLevels[entity.color] < 3) {
+      this.resonanceLevels[entity.color]++;
     }
 
-    if (this.resonanceLevels[archetype.name] === 3) {
+    if (this.resonanceLevels[entity.color] === 3) {
+      if (!this.attunementTimeRemaining) {
+        app.track('attunement_reached');
+      }
       this.attunementTimeRemaining = ATTUNEMENT_TTL;
       this.sound.play('attune', { volume: 0.25 });
     }
+
     this.sound.play('select_orb', { volume: 0.25 });
+
+    app.track('orb_clicked', {
+      orb_count: this.collectedOrbs.reduce((count, orb) => {
+        return orb.color === entity.color ? count + 1 : count;
+      }, 0),
+      orb_color: colorToHexString(Phaser.Display.Color.IntegerToColor(entity.color)).toUpperCase(),
+      orb_name: entity.archetype.name
+    });
+
     this.updateResonances();
   }
 
