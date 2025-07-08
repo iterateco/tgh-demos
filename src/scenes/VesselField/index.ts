@@ -437,7 +437,9 @@ export class VesselField extends BaseScene {
       vessel.targetResonance = Math.pow(level / 3, 2);
     };
 
-    const wedgeLevels = Object.values(this.resonanceLevels);
+    const wedgeLevels = this.dataProvider.emotionalArchetypes.map(archetype => {
+      return this.resonanceLevels[archetype.color];
+    });
     this.resonanceMeter.tweenWedgeLevels(wedgeLevels);
   }
 
@@ -455,7 +457,7 @@ export class VesselField extends BaseScene {
 
     this.collectedOrbs.push(entity);
 
-    if (this.resonanceLevels[entity.color] < 3) {
+    if (this.resonanceLevels[entity.color] !== undefined && this.resonanceLevels[entity.color] < 3) {
       this.resonanceLevels[entity.color]++;
     }
 
