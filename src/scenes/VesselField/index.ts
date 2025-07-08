@@ -5,7 +5,8 @@ import { ToroidalPoissonDisc3D } from '../../utils/ToroidalPoissonDisc3D';
 import { BaseScene } from '../BaseScene';
 import app from './app';
 import DataProvider from './DataProvider';
-import { Orb, OrbController } from './OrbController';
+import { OrbController } from './OrbController';
+import { OrbSprite } from './OrbSprite';
 import { ResonanceMeter, ResonanceMeterProps } from './ResonanceMeter';
 import { Entity, FieldEntity, OrbEntity, Scrollable, VesselEntity } from './types';
 import { VesselController } from './VesselController';
@@ -365,7 +366,7 @@ export class VesselField extends BaseScene {
       sprite.setVisible(false);
     }
 
-    for (const sprite of (this.orbController.sprites.getChildren() as Orb[])) {
+    for (const sprite of (this.orbController.sprites.getChildren() as OrbSprite[])) {
       sprite.setActive(false);
       sprite.setVisible(false);
       sprite.trail.setActive(false);

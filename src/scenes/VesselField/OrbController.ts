@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import DataProvider from './DataProvider';
+import { OrbSprite } from './OrbSprite';
 import { SceneController } from './SceneController';
 import { FieldEntity, OrbEntity } from './types';
 
@@ -46,8 +47,7 @@ export class OrbController extends SceneController {
     burstShader.setRenderToTexture('burst');
 
     this.sprites = scene.add.group({
-      classType: Orb,
-      createCallback: (sprite: Orb) => this.initSprite(sprite)
+      classType: OrbSprite,
     });
   }
 
@@ -88,34 +88,6 @@ export class OrbController extends SceneController {
     entity.offset = ppos;
   }
 
-  private initSprite(sprite: Orb) {
-    const { scene } = this;
-
-    sprite.nebula = scene.add.image(0, 0, 'nebula');
-    sprite.add(sprite.nebula);
-
-    sprite.burst = scene.add.image(0, 0, 'burst');
-    sprite.add(sprite.burst);
-
-    sprite.setSize(sprite.burst.width, sprite.burst.height);
-    sprite.setScrollFactor(0);
-
-    sprite.trail = scene.add.particles(0, 0, 'nebula', {
-      speed: 2,
-      lifespan: 500,
-      scale: { start: 0.25, end: 0 },
-      alpha: { start: 0.25, end: 0 },
-      // rotate: { start: 0, end: 120 },
-      frequency: 50,
-      maxAliveParticles: 10,
-      follow: sprite
-    });
-    sprite.trail.setScrollFactor(0);
-
-    // sprite.setPostPipeline('trail');
-    // sprite.postFX.addBloom(0xffffff, 4, 2, 1, 3);
-  }
-
   drawSprite(
     params: {
       entity: FieldEntity,
@@ -126,64 +98,35 @@ export class OrbController extends SceneController {
       depth: number
     }
   ) {
-    const { alpha, depth } = params;
     const entity = params.entity as OrbEntity;
     const { color, offset } = entity;
     const x = params.x + offset.x * params.scale;
     const y = params.y + offset.y * params.scale;
-    const scale = params.scale * entity.transitionFactor;
 
-    let sprite: Orb;
-    const matches = this.sprites.getMatching('entity', entity) as Orb[];
+    let sprite: OrbSprite;
+    const matches = this.sprites.getMatching('entity', entity) as OrbSprite[];
     if (matches.length) {
       sprite = matches[0];
     } else {
       sprite = this.sprites.get();
     }
 
-    sprite.nebula
-      .setTint(color)
-      .setAlpha(alpha * 0.75);
-
-    sprite.burst
-      .setAlpha(Math.pow(alpha, 2.5));
-    //.setRotation(this.orbRotation);
-
     sprite
-      .setPosition(x, y)
-      .setDepth(depth)
-      .setScale(scale)
-      .setVisible(true)
-      .setActive(true);
+      .update({
+        ...params,
+        color,
+        transitionFactor: entity.transitionFactor
+      })
+      .setPosition(x, y);
 
-    if (alpha > 0.5) {
+    if (params.alpha > 0.5) {
       sprite.setInteractive();
     } else {
       sprite.disableInteractive();
     }
 
-    sprite.trail
-      .setDepth(depth - 1)
-      .setParticleTint(color)
-      .setAlpha(0.75 * alpha * entity.transitionFactor)
-      .setVisible(true)
-      .setActive(true);
-
-    // const fx = sprite.getPostPipeline('trail') as TrailFX;
-    // const vel = entity.offset.clone().subtract(entity.prevOffset);
-    // fx.setVelocity(vel.x, vel.y);
-
     sprite.entity = entity;
   }
-}
-
-export class Orb extends Phaser.GameObjects.Container {
-  id: number;
-  entity: FieldEntity;
-  blur: Phaser.GameObjects.Image;
-  nebula: Phaser.GameObjects.Image;
-  burst: Phaser.GameObjects.Image;
-  trail: Phaser.GameObjects.Particles.ParticleEmitter;
 }
 
 const NEBULA_SHADER = `

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import DataProvider from './DataProvider';
 import { SceneController } from './SceneController';
 import { FieldEntity, VesselEntity } from './types';
+import { VesselSprite } from './VesselSprite';
 
 export class VesselController extends SceneController {
   entities: VesselEntity[] = [];
@@ -26,8 +27,7 @@ export class VesselController extends SceneController {
     });
 
     this.sprites = scene.add.group({
-      classType: Vessel,
-      createCallback: (sprite: Vessel) => this.initSprite(sprite)
+      classType: VesselSprite
     });
   }
 
@@ -95,25 +95,6 @@ export class VesselController extends SceneController {
     }
   }
 
-  private initSprite(sprite: Vessel) {
-    const { scene } = this;
-
-    sprite.blur = scene.add.image(0, 0, 'vessel_blur');
-    sprite.base = scene.add.image(0, 0, 'vessel_base');
-    sprite.highlight = scene.add.image(0, 0, 'vessel_highlight');
-    sprite.glow = scene.add.image(0, 0, 'vessel_glow');
-    sprite.icon = scene.add.image(0, -3, 'lock');
-
-    sprite.add(sprite.blur);
-    sprite.add(sprite.base);
-    sprite.add(sprite.highlight);
-    sprite.add(sprite.glow);
-    sprite.add(sprite.icon);
-
-    sprite.setSize(sprite.base.width, sprite.base.height);
-    sprite.setScrollFactor(0);
-  }
-
   drawSprite(
     params: {
       entity: FieldEntity,
@@ -124,10 +105,10 @@ export class VesselController extends SceneController {
       depth: number
     }
   ) {
-    const { alpha, depth } = params;
+    const { alpha, scale, depth } = params;
     const entity = params.entity as VesselEntity;
     const { post, color, resonance, offset } = entity;
-    const sprite = (this.sprites.get() as Vessel);
+    const sprite = (this.sprites.get() as VesselSprite);
 
     const x = params.x + offset.x * params.scale;
     const y = params.y + offset.y * params.scale;
@@ -141,36 +122,18 @@ export class VesselController extends SceneController {
       interactionFactor = (resonance - interactionThreshold) * 1 / (1 - interactionThreshold);
     }
 
-    const resonanceScaleFactor = 1 + this.resonanceScale * resonance;
-    const scale = params.scale * resonanceScaleFactor;
+    sprite.update({
+      color,
+      resonance,
+      resonanceScale: this.resonanceScale,
+      interactionFactor,
+      locked: post.has_response,
+      scale,
+      alpha,
+      depth
+    });
 
-    const baseAlpha = Math.pow(alpha, 2.5);
-
-    const c = Phaser.Display.Color.ValueToColor(color);
-
-    sprite.blur
-      .setTint(c.clone().lighten((1 - resonance) * 100).color)
-      .setAlpha((1 - alpha) * Math.pow(alpha, .5));
-
-    sprite.base
-      .setTint(c.clone().saturate(interactionFactor * 25).color)
-      .setAlpha(baseAlpha * (0.1 + resonance * 0.9));
-
-    sprite.highlight
-      .setAlpha(baseAlpha * (0.5 + resonance * 0.5));
-
-    sprite.glow
-      //.setTint(c.clone().lighten(50).color)
-      .setAlpha(baseAlpha * interactionFactor * 0.6);
-
-    sprite.icon.setAlpha(post.has_response ? baseAlpha : 0);
-
-    sprite
-      .setPosition(x, y)
-      .setDepth(depth)
-      .setScale(scale)
-      .setVisible(true)
-      .setActive(true);
+    sprite.setPosition(x, y);
 
     if (alpha > 0.5 && interactionFactor > 0) {
       sprite.setInteractive();
@@ -180,13 +143,4 @@ export class VesselController extends SceneController {
 
     sprite.entity = entity;
   }
-}
-
-export class Vessel extends Phaser.GameObjects.Container {
-  entity: VesselEntity;
-  blur: Phaser.GameObjects.Image;
-  base: Phaser.GameObjects.Image;
-  highlight: Phaser.GameObjects.Image;
-  glow: Phaser.GameObjects.Image;
-  icon: Phaser.GameObjects.Image;
 }
