@@ -8,8 +8,10 @@ import DataProvider from './DataProvider';
 import { OrbController } from './OrbController';
 import { OrbSprite } from './OrbSprite';
 import { ResonanceMeter, ResonanceMeterProps } from './ResonanceMeter';
+import { TipManager } from './TipManager';
 import { Entity, FieldEntity, OrbEntity, Scrollable, VesselEntity } from './types';
 import { VesselController } from './VesselController';
+import { VesselSprite } from './VesselSprite';
 
 const SKY_SIZE = { width: 1024, height: 1024 };
 const ATTUNEMENT_TTL = 20_000;
@@ -45,6 +47,8 @@ export class VesselField extends BaseScene {
   collectedOrbs: OrbEntity[] = [];
 
   entityField!: ToroidalPoissonDisc3D<FieldEntity>;
+
+  tipManager!: TipManager;
 
   fpsText: Phaser.GameObjects.Text;
 
@@ -96,6 +100,8 @@ export class VesselField extends BaseScene {
     this.createResonanceMeter();
     // this.createStats();
 
+    this.tipManager = new TipManager(this);
+
     this.scale.on('resize', this.resize, this);
     this.resize();
 
@@ -130,6 +136,13 @@ export class VesselField extends BaseScene {
     });
 
     //app.loadModal('/components/intro');
+
+    setTimeout(() => {
+      const tipSprite = new OrbSprite(this);
+      tipSprite.update({ color: 0x49C6B7, scale: 0.25 });
+      tipSprite.trail.destroy();
+      this.tipManager.show('intro', 'Collect 3 spirits of the same color.', tipSprite);
+    }, 500);
   }
 
   createSky() {
@@ -431,6 +444,8 @@ export class VesselField extends BaseScene {
   handleSelectOrb(entity: OrbEntity) {
     if (this.collectedOrbs.find(o => o === entity)) return;
 
+    this.tipManager.close();
+
     this.tweens.add({
       targets: entity,
       transitionFactor: 0,
@@ -450,6 +465,18 @@ export class VesselField extends BaseScene {
       }
       this.attunementTimeRemaining = ATTUNEMENT_TTL;
       this.sound.play('attune', { volume: 0.25 });
+
+      if (!this.tipManager.wasShown('vessel')) {
+        const tipSprite = new VesselSprite(this);
+        tipSprite.update({
+          color: entity.color,
+          resonance: 1,
+          resonanceScale: 1,
+          interactionFactor: 1,
+          scale: 0.15
+        });
+        this.tipManager.show('vessel', "Tap a glowing heart to reveal its message.", tipSprite);
+      }
     }
 
     this.sound.play('select_orb', { volume: 0.25 });
@@ -463,6 +490,7 @@ export class VesselField extends BaseScene {
     });
 
     this.updateResonances();
+
   }
 
   handleSelectVessel(entity: VesselEntity) {
@@ -470,6 +498,8 @@ export class VesselField extends BaseScene {
 
     app.track('post_clicked');
     app.loadModal(`/components/posts/${entity.post.id}`);
+
+    this.tipManager.close();
   }
 
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {
@@ -513,5 +543,7 @@ export class VesselField extends BaseScene {
       ent.sprite.setSize(width * 2, height * 2);
       ent.sprite.setOrigin(0, 0);
     }
+
+    this.tipManager.resize();
   }
 }

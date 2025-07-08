@@ -38,11 +38,11 @@ export class OrbSprite extends Phaser.GameObjects.Container {
       color: number
       transitionFactor?: number
       scale: number
-      alpha: number
-      depth: number
+      alpha?: number
+      depth?: number
     }
   ) {
-    const { color, alpha, depth, transitionFactor = 1 } = params;
+    const { color, alpha = 1, depth = 1, transitionFactor = 1 } = params;
     const scale = params.scale * transitionFactor;
 
     this.nebula

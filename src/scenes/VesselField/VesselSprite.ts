@@ -36,11 +36,11 @@ export class VesselSprite extends Phaser.GameObjects.Container {
       interactionFactor: number
       locked?: boolean
       scale: number
-      alpha: number
-      depth: number
+      alpha?: number
+      depth?: number
     }
   ) {
-    const { color, resonance, resonanceScale, interactionFactor, locked, alpha, depth } = params;
+    const { color, resonance, resonanceScale, interactionFactor, locked, alpha = 1, depth = 1 } = params;
 
     const resonanceScaleFactor = 1 + resonanceScale * resonance;
     const scale = params.scale * resonanceScaleFactor;
