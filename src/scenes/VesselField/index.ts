@@ -141,7 +141,7 @@ export class VesselField extends BaseScene {
       const tipSprite = new OrbSprite(this);
       tipSprite.update({ color: 0x49C6B7, scale: 0.25 });
       tipSprite.trail.destroy();
-      this.tipManager.show('intro', 'Collect 3 spirits of the same color.', tipSprite);
+      this.tipManager.show('intro', 'Collect 3 spirits of the same color to become attuned.', tipSprite);
     }, 500);
   }
 
