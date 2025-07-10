@@ -463,7 +463,7 @@ export class VesselField extends BaseScene {
 
     if (this.resonanceLevels[entity.color] === 3) {
       if (!this.attunementTimeRemaining) {
-        app.track('attunement_reached');
+        app.track('attunement_start');
       }
       this.attunementTimeRemaining = ATTUNEMENT_TTL;
       this.sound.play('attune', { volume: 0.25 });
@@ -483,7 +483,7 @@ export class VesselField extends BaseScene {
 
     this.sound.play('select_orb', { volume: 0.25 });
 
-    app.track('orb_clicked', {
+    app.track('orb_click', {
       orb_count: this.collectedOrbs.reduce((count, orb) => {
         return orb.color === entity.color ? count + 1 : count;
       }, 0),
@@ -498,7 +498,7 @@ export class VesselField extends BaseScene {
   handleSelectVessel(entity: VesselEntity) {
     this.sound.play('select_vessel', { volume: 0.25 });
 
-    app.track('post_clicked');
+    app.track('post_click');
     app.loadModal(`/components/posts/${entity.post.id}`);
 
     this.tipManager.close();
