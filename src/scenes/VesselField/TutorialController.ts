@@ -6,7 +6,7 @@ import { AppScene, OrbEntity, RESONANCE_LIMIT } from './types';
 import { VesselSprite } from './VesselSprite';
 
 export class TutorialController extends SceneController {
-  state: { key: string, params?: { [key: string]: any } } = { key: 'intro' };
+  state: { key: string, params?: { [key: string]: any } } = { key: 'init' };
   reticleController: ReticleController;
   dragged = false;
   dragTip: DragFinger;
@@ -20,14 +20,20 @@ export class TutorialController extends SceneController {
     scene.time.delayedCall(500, () => {
       this.showOrbToast(0x49C6B7, `Tap ${RESONANCE_LIMIT} spirits of the same color to become attuned.`);
     });
+
+    scene.time.delayedCall(1500, () => {
+      if (this.state.key === 'init') {
+        this.setState('collect_first_orb');
+      }
+    });
   }
 
   update(_time: number, _delta: number) {
     let reticleTargets: OrbSprite[] = [];
 
-    if (this.state.key === 'intro') {
+    if (this.state.key === 'collect_first_orb') {
       reticleTargets = (this.scene.orbController.sprites.getChildren() as OrbSprite[]);
-    } else if (this.state.key === 'attune') {
+    } else if (this.state.key === 'collect_more_orbs') {
       reticleTargets = (this.scene.orbController.sprites.getChildren() as OrbSprite[])
         .filter(sprite => {
           return sprite.entity.color === this.state.params!.color;
@@ -35,7 +41,7 @@ export class TutorialController extends SceneController {
     }
 
     reticleTargets = reticleTargets.filter(sprite => {
-      return sprite.active && sprite.input?.enabled;
+      return !sprite.entity.collected && sprite.active && sprite.input?.enabled;
     });
 
     this.reticleController.updateTargets(reticleTargets);
@@ -64,7 +70,7 @@ export class TutorialController extends SceneController {
         : `Almost there! Collect one more spirit of this color.`;
 
       this.showOrbToast(entity.color, message);
-      this.setState('attune', { color: entity.color });
+      this.setState('collect_more_orbs', { color: entity.color });
 
       this.scene.time.delayedCall(3000, () => {
         if (!this.dragged) {

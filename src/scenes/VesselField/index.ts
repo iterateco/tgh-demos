@@ -397,6 +397,7 @@ export class VesselField extends BaseScene {
             ease: 'Power2',
             duration: 300
           });
+          entity.collected = false;
         }
 
         this.collectedOrbs.length = 0;
@@ -449,6 +450,7 @@ export class VesselField extends BaseScene {
     });
 
     this.collectedOrbs.push(entity);
+    entity.collected = true;
 
     if (this.resonanceLevels[entity.color] !== undefined && this.resonanceLevels[entity.color] < 3) {
       this.resonanceLevels[entity.color]++;

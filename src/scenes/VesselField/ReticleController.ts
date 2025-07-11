@@ -11,6 +11,7 @@ export interface ReticleTarget {
 
 export class ReticleController extends SceneController {
   sprites!: Phaser.GameObjects.Group;
+  spawnedSprites = new Set();
 
   constructor(scene: AppScene) {
     super(scene);
@@ -41,6 +42,7 @@ export class ReticleController extends SceneController {
   }
 
   spawnSprite(target: ReticleTarget) {
+    this.spawnedSprites.add(target.id);
     const sprite = this.sprites.getFirstDead(true);
     sprite.reset(target);
     return sprite;
@@ -49,6 +51,7 @@ export class ReticleController extends SceneController {
 
 class ReticleSprite extends Phaser.GameObjects.Graphics {
   target: ReticleTarget;
+  tween: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene) {
     super(scene);
@@ -63,10 +66,18 @@ class ReticleSprite extends Phaser.GameObjects.Graphics {
     this.setActive(true);
     this.setVisible(true);
 
-    this.scene.tweens.add({
+    if (this.tween) {
+      this.tween.stop();
+      this.tween.destroy();
+    }
+
+    this.setAlpha(0);
+    this.setScale(2);
+
+    this.tween = this.scene.tweens.add({
       targets: this,
-      alpha: { from: 0, to: 1 },
-      scale: { from: 3, to: 1 },
+      alpha: { from: 0, to: 0.75 },
+      scale: { from: 2, to: 1 },
       duration: 500,
       ease: 'Quad.In'
     });
