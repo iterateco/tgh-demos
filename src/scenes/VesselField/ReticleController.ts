@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { SceneController } from './SceneController';
 import { AppScene } from './types';
 
-interface ReticleTarget {
+export interface ReticleTarget {
   id: string
   x: number
   y: number
@@ -68,13 +68,13 @@ class ReticleSprite extends Phaser.GameObjects.Graphics {
       alpha: { from: 0, to: 1 },
       scale: { from: 3, to: 1 },
       duration: 500,
-      ease: 'Power2'
+      ease: 'Quad.In'
     });
   }
 
   draw() {
-    const radius = 25;
-    const thickness = 1;
+    const radius = 30;
+    const thickness = 2;
 
     this.clear();
     this.lineStyle(thickness, 0xFFFFFF, 1);

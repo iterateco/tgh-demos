@@ -5,6 +5,8 @@ import { OrbController } from './OrbController';
 import { ToastManager } from './ToastManager';
 import { VesselController } from './VesselController';
 
+export const RESONANCE_LIMIT = 3;
+
 export interface AppScene extends Phaser.Scene {
   toastManager: ToastManager
   dataProvider: DataProvider

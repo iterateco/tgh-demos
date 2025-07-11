@@ -10,7 +10,7 @@ import { OrbSprite } from './OrbSprite';
 import { ResonanceMeter, ResonanceMeterProps } from './ResonanceMeter';
 import { ToastManager } from './ToastManager';
 import { TutorialController } from './TutorialController';
-import { Entity, FieldEntity, OrbEntity, Scrollable, VesselEntity } from './types';
+import { Entity, FieldEntity, OrbEntity, RESONANCE_LIMIT, Scrollable, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 import { VesselSprite } from './VesselSprite';
 
@@ -72,6 +72,7 @@ export class VesselField extends BaseScene {
     this.load.image('vessel_glow', 'textures/heart_glow.png');
     this.load.image('lock', 'textures/lock.png');
     this.load.image('attunement_glow', 'textures/attunement_glow.png');
+    this.load.image('finger', 'textures/finger.png');
 
     this.load.audio('select_orb', 'audio/select_orb.mp3');
     this.load.audio('select_vessel', 'audio/select_vessel.mp3');
@@ -122,6 +123,8 @@ export class VesselField extends BaseScene {
         cameraProps.velocity.x -= (position.x - prevPosition.x) * cameraProps.dragAccel;
         cameraProps.velocity.y -= (position.y - prevPosition.y) * cameraProps.dragAccel;
         this.prevPointerPos = position.clone();
+
+        this.tutorialController.sceneDragged();
       }
     });
 
@@ -235,13 +238,6 @@ export class VesselField extends BaseScene {
         return { color: archetype.color, level: 0 };
       })
     };
-    // const props: ResonanceMeterProps = {
-    //   attunementLife: 0.5,
-    //   wedges: Object.values(EMOTIONS).map(color => ({
-    //     color,
-    //     level: Math.round(Math.random() * 3)
-    //   }))
-    // };
 
     this.resonanceMeter = new ResonanceMeter(this, 80, 80, props);
     this.resonanceMeter
@@ -432,7 +428,7 @@ export class VesselField extends BaseScene {
       }
 
       const level = this.resonanceLevels[vessel.color];
-      vessel.targetResonance = Math.pow(level / 3, 2);
+      vessel.targetResonance = Math.pow(level / RESONANCE_LIMIT, 2);
     };
 
     const wedgeLevels = this.dataProvider.emotionalArchetypes.map(archetype => {
@@ -444,8 +440,6 @@ export class VesselField extends BaseScene {
   handleSelectOrb(sprite: OrbSprite) {
     const { entity } = sprite;
     if (this.collectedOrbs.find(o => o === entity)) return;
-
-    this.tutorialController.orbSelected();
 
     this.tweens.add({
       targets: entity,
@@ -460,14 +454,12 @@ export class VesselField extends BaseScene {
       this.resonanceLevels[entity.color]++;
     }
 
-    if (this.resonanceLevels[entity.color] === 3) {
+    if (this.resonanceLevels[entity.color] === RESONANCE_LIMIT) {
       if (!this.attunementTimeRemaining) {
         app.track('attunement_start');
       }
       this.attunementTimeRemaining = ATTUNEMENT_TTL;
       this.sound.play('attune', { volume: 0.25 });
-
-      this.tutorialController.attunementReached(entity);
     }
 
     this.sound.play('select_orb', { volume: 0.25 });
@@ -481,6 +473,10 @@ export class VesselField extends BaseScene {
     });
 
     this.updateResonances();
+    this.tutorialController.orbSelected({
+      entity,
+      resonanceLevel: this.resonanceLevels[entity.color]
+    });
   }
 
   handleSelectVessel(sprite: VesselSprite) {
@@ -537,5 +533,6 @@ export class VesselField extends BaseScene {
     }
 
     this.toastManager.resize();
+    this.tutorialController.resize();
   }
 }
