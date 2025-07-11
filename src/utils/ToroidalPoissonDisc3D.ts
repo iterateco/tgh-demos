@@ -4,7 +4,7 @@ interface Entity {
   r: number
 }
 
-interface Circle<TEntity extends Entity = Entity> {
+export interface TPDPoint<TEntity extends Entity = Entity> {
   x: number
   y: number
   z: number
@@ -21,8 +21,8 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
   cellsZ: number;
   minPointDist = 10;
   generatedSet = new Set<string>();
-  spatialHash = new Map<string, Circle[]>();
-  circles: Circle<TEntity>[] = [];
+  spatialHash = new Map<string, TPDPoint[]>();
+  points: TPDPoint<TEntity>[] = [];
 
   constructor(worldWidth: number, worldHeight: number, worldDepth: number, cellSize = 50) {
     this.worldWidth = worldWidth;
@@ -73,28 +73,28 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
       }
     }
 
-    return this.circles;
+    return this.points;
   }
 
   private hashKey(x: number, y: number, z: number) {
     return `${(x + this.cellsX) % this.cellsX},${(y + this.cellsY) % this.cellsY},${(z + this.cellsZ) % this.cellsZ}`;
   }
 
-  private hashCircle(c: Circle) {
-    const { r } = c.entity;
-    const minX = Math.floor((c.x - r) / this.cellSize);
-    const maxX = Math.floor((c.x + r) / this.cellSize);
-    const minY = Math.floor((c.y - r) / this.cellSize);
-    const maxY = Math.floor((c.y + r) / this.cellSize);
-    const minZ = Math.floor((c.z - r) / this.cellSize);
-    const maxZ = Math.floor((c.z + r) / this.cellSize);
+  private hashPoint(p: TPDPoint) {
+    const { r } = p.entity;
+    const minX = Math.floor((p.x - r) / this.cellSize);
+    const maxX = Math.floor((p.x + r) / this.cellSize);
+    const minY = Math.floor((p.y - r) / this.cellSize);
+    const maxY = Math.floor((p.y + r) / this.cellSize);
+    const minZ = Math.floor((p.z - r) / this.cellSize);
+    const maxZ = Math.floor((p.z + r) / this.cellSize);
 
     for (let x = minX; x <= maxX; x++) {
       for (let y = minY; y <= maxY; y++) {
         for (let z = minZ; z <= maxZ; z++) {
           const k = this.hashKey(x, y, z);
           if (!this.spatialHash.has(k)) this.spatialHash.set(k, []);
-          this.spatialHash.get(k)!.push(c);
+          this.spatialHash.get(k)!.push(p);
         }
       }
     }
@@ -155,9 +155,9 @@ export class ToroidalPoissonDisc3D<TEntity extends Entity> {
       const entity = getEntity(cellSeed + entityIdx);
 
       if (!this.checkOverlap(x, y, z, entity.r)) {
-        const c = { x, y, z, entity, fade: 1 };
-        this.circles.push(c);
-        this.hashCircle(c);
+        const p = { x, y, z, entity };
+        this.points.push(p);
+        this.hashPoint(p);
         entityIdx++;
       }
     }

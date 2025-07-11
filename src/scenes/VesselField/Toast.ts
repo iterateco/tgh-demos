@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-export class Tip extends Phaser.GameObjects.Container {
+export class Toast extends Phaser.GameObjects.Container {
   private bg: Phaser.GameObjects.Graphics;
   private icon: Phaser.GameObjects.Sprite | Phaser.GameObjects.Container;
   private text: Phaser.GameObjects.Text;

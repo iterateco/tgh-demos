@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { OrbEntity } from './types';
 
 export class OrbSprite extends Phaser.GameObjects.Container {
+  id: string;
   entity: OrbEntity;
   blur: Phaser.GameObjects.Image;
   nebula: Phaser.GameObjects.Image;

@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
-import DataProvider from './DataProvider';
 import { OrbSprite } from './OrbSprite';
 import { SceneController } from './SceneController';
-import { FieldEntity, OrbEntity } from './types';
+import { AppScene, FieldEntity, OrbEntity } from './types';
 
 const MOVE_CONFIG = {
   x: {
@@ -25,8 +24,8 @@ export class OrbController extends SceneController {
 
   sprites!: Phaser.GameObjects.Group;
 
-  constructor(scene: Phaser.Scene, dataProvider: DataProvider) {
-    super(scene, dataProvider);
+  constructor(scene: AppScene) {
+    super(scene);
 
     const nebulaShader = scene.add.shader({
       name: 'nebula_tex',
@@ -56,7 +55,7 @@ export class OrbController extends SceneController {
   }
 
   createEntity(_id: number) {
-    const archetype = Phaser.Math.RND.pick(this.dataProvider.emotionalArchetypes);
+    const archetype = Phaser.Math.RND.pick(this.scene.dataProvider.emotionalArchetypes);
     const color = archetype.color;
 
     const orb: OrbEntity = {
@@ -90,11 +89,12 @@ export class OrbController extends SceneController {
 
   drawSprite(
     params: {
-      entity: FieldEntity,
-      x: number,
-      y: number,
-      scale: number,
-      alpha: number,
+      id: string
+      entity: FieldEntity
+      x: number
+      y: number
+      scale: number
+      alpha: number
       depth: number
     }
   ) {
@@ -125,6 +125,7 @@ export class OrbController extends SceneController {
       sprite.disableInteractive();
     }
 
+    sprite.id = params.id;
     sprite.entity = entity;
   }
 }

@@ -1,13 +1,10 @@
-import Phaser from 'phaser';
-import DataProvider from './DataProvider';
+import { AppScene } from './types';
 
 export class SceneController {
-  scene: Phaser.Scene;
-  dataProvider: DataProvider;
+  scene: AppScene;
 
-  constructor(scene: Phaser.Scene, dataProvider: DataProvider) {
+  constructor(scene: AppScene) {
     this.scene = scene;
-    this.dataProvider = dataProvider;
   }
 
   update(_time: number, _delta: number) { }

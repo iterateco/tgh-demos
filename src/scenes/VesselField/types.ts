@@ -1,5 +1,16 @@
 import Phaser from 'phaser';
 import { EmotionalArchetype, Post } from '../../models';
+import DataProvider from './DataProvider';
+import { OrbController } from './OrbController';
+import { ToastManager } from './ToastManager';
+import { VesselController } from './VesselController';
+
+export interface AppScene extends Phaser.Scene {
+  toastManager: ToastManager
+  dataProvider: DataProvider
+  orbController: OrbController
+  vesselController: VesselController
+}
 
 export interface Entity<T extends Phaser.GameObjects.GameObject = Phaser.GameObjects.GameObject> {
   sprite: T

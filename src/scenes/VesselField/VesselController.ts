@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
-import DataProvider from './DataProvider';
 import { SceneController } from './SceneController';
-import { FieldEntity, VesselEntity } from './types';
+import { AppScene, FieldEntity, VesselEntity } from './types';
 import { VesselSprite } from './VesselSprite';
 
 export class VesselController extends SceneController {
@@ -10,8 +9,8 @@ export class VesselController extends SceneController {
 
   resonanceScale = 1;
 
-  constructor(scene: Phaser.Scene, dataProvider: DataProvider) {
-    super(scene, dataProvider);
+  constructor(scene: AppScene) {
+    super(scene);
 
     this.createVesselEntities();
 
@@ -32,7 +31,7 @@ export class VesselController extends SceneController {
   }
 
   private createVesselEntities() {
-    for (const post of this.dataProvider.posts) {
+    for (const post of this.scene.dataProvider.posts) {
       const archetype = post.emotional_archetypes[0];
       if (!archetype) continue;
       const color = archetype.color;

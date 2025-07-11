@@ -8,7 +8,8 @@ import DataProvider from './DataProvider';
 import { OrbController } from './OrbController';
 import { OrbSprite } from './OrbSprite';
 import { ResonanceMeter, ResonanceMeterProps } from './ResonanceMeter';
-import { TipManager } from './TipManager';
+import { ToastManager } from './ToastManager';
+import { TutorialController } from './TutorialController';
 import { Entity, FieldEntity, OrbEntity, Scrollable, VesselEntity } from './types';
 import { VesselController } from './VesselController';
 import { VesselSprite } from './VesselSprite';
@@ -37,8 +38,11 @@ export class VesselField extends BaseScene {
   clouds!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable & { accel: number })[];
   background!: (Entity<Phaser.GameObjects.TileSprite> & Scrollable)[];
 
+  toastManager: ToastManager;
+
   vesselController: VesselController;
   orbController: OrbController;
+  tutorialController: TutorialController;
 
   attunementTimeRemaining = 0;
   resonanceLevels: { [key: string]: number } = {};
@@ -47,8 +51,6 @@ export class VesselField extends BaseScene {
   collectedOrbs: OrbEntity[] = [];
 
   entityField!: ToroidalPoissonDisc3D<FieldEntity>;
-
-  tipManager!: TipManager;
 
   fpsText: Phaser.GameObjects.Text;
 
@@ -80,9 +82,11 @@ export class VesselField extends BaseScene {
   }
 
   create() {
+    this.toastManager = new ToastManager(this);
+
     this.dataProvider = new DataProvider(this.cache.json);
-    this.vesselController = new VesselController(this, this.dataProvider);
-    this.orbController = new OrbController(this, this.dataProvider);
+    this.vesselController = new VesselController(this);
+    this.orbController = new OrbController(this);
 
     // this.collectedOrbs = [
     //   { variant: 3 },
@@ -100,7 +104,7 @@ export class VesselField extends BaseScene {
     this.createResonanceMeter();
     // this.createStats();
 
-    this.tipManager = new TipManager(this);
+    this.tutorialController = new TutorialController(this);
 
     this.scale.on('resize', this.resize, this);
     this.resize();
@@ -129,20 +133,11 @@ export class VesselField extends BaseScene {
       if (!entity) return;
 
       if (entity.type === 'orb') {
-        this.handleSelectOrb(entity);
+        this.handleSelectOrb(object);
       } else {
-        this.handleSelectVessel(entity);
+        this.handleSelectVessel(object);
       }
     });
-
-    //app.loadModal('/components/intro');
-
-    setTimeout(() => {
-      const tipSprite = new OrbSprite(this);
-      tipSprite.update({ color: 0x49C6B7, scale: 0.25 });
-      tipSprite.trail.destroy();
-      this.tipManager.show('intro', 'Collect 3 spirits of the same color to become attuned.', tipSprite);
-    }, 500);
   }
 
   createSky() {
@@ -292,7 +287,7 @@ export class VesselField extends BaseScene {
       cloud.sprite.setTilePosition(cloud.sprite.tilePositionX + time * cloud.accel, cloud.sprite.tilePositionY);
     }
 
-    const circles = this.entityField.generate({
+    const points = this.entityField.generate({
       width,
       height,
       cameraX,
@@ -318,16 +313,16 @@ export class VesselField extends BaseScene {
     const dy = 0, dx = 0;
     const margin = 100;
 
-    for (const c of circles) {
+    for (const p of points) {
       for (let dz = -1; dz <= 1; dz++) {
-        const wx = c.x + dx * worldWidth;
-        const wy = c.y + dy * worldHeight;
-        const wz = c.z + dz * worldDepth;
+        const wx = p.x + dx * worldWidth;
+        const wy = p.y + dy * worldHeight;
+        const wz = p.z + dz * worldDepth;
 
         const dzFromCamera = wz - cameraZ;
         if (dzFromCamera < 0 || dzFromCamera > cameraProps.far) continue;
 
-        const { entity } = c;
+        const { entity } = p;
         const { x, y, scale } = this.project3DTo2D(wx, wy, wz, cameraX, cameraY, cameraZ);
         const r = entity.r * scale;
 
@@ -355,6 +350,7 @@ export class VesselField extends BaseScene {
           renderedEntities.add(entity);
 
           renderItems.push({
+            id: `${p.x}_${p.y}_${p.z}`,
             entity,
             x,
             y,
@@ -420,6 +416,8 @@ export class VesselField extends BaseScene {
     const attunementLife = this.attunementTimeRemaining / ATTUNEMENT_TTL;
     this.resonanceMeter.setAttunementLife(attunementLife);
 
+    this.tutorialController.update(time, delta);
+
     if (this.fpsText) {
       const text = `FPS: ${this.game.loop.actualFps}`;
       this.fpsText.setText(text);
@@ -443,10 +441,11 @@ export class VesselField extends BaseScene {
     this.resonanceMeter.tweenWedgeLevels(wedgeLevels);
   }
 
-  handleSelectOrb(entity: OrbEntity) {
+  handleSelectOrb(sprite: OrbSprite) {
+    const { entity } = sprite;
     if (this.collectedOrbs.find(o => o === entity)) return;
 
-    this.tipManager.close();
+    this.tutorialController.orbSelected();
 
     this.tweens.add({
       targets: entity,
@@ -468,17 +467,7 @@ export class VesselField extends BaseScene {
       this.attunementTimeRemaining = ATTUNEMENT_TTL;
       this.sound.play('attune', { volume: 0.25 });
 
-      if (!this.tipManager.wasShown('vessel')) {
-        const tipSprite = new VesselSprite(this);
-        tipSprite.update({
-          color: entity.color,
-          resonance: 1,
-          resonanceScale: 1,
-          interactionFactor: 1,
-          scale: 0.15
-        });
-        this.tipManager.show('vessel', "Tap a glowing heart to reveal its message.", tipSprite);
-      }
+      this.tutorialController.attunementReached(entity);
     }
 
     this.sound.play('select_orb', { volume: 0.25 });
@@ -492,16 +481,17 @@ export class VesselField extends BaseScene {
     });
 
     this.updateResonances();
-
   }
 
-  handleSelectVessel(entity: VesselEntity) {
+  handleSelectVessel(sprite: VesselSprite) {
+    const { entity } = sprite;
+
     this.sound.play('select_vessel', { volume: 0.25 });
 
     app.track('post_click');
     app.loadModal(`/components/posts/${entity.post.id}`);
 
-    this.tipManager.close();
+    this.tutorialController.vesselSelected();
   }
 
   project3DTo2D(x: number, y: number, z: number, cameraX: number, cameraY: number, cameraZ: number) {
@@ -546,6 +536,6 @@ export class VesselField extends BaseScene {
       ent.sprite.setOrigin(0, 0);
     }
 
-    this.tipManager.resize();
+    this.toastManager.resize();
   }
 }
